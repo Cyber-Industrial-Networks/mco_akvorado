@@ -111,7 +111,7 @@
       "gridPos": {
         "x": 0,
         "y": 1,
-        "w": 6,
+        "w": 5,
         "h": 4
       },
       "id": 2
@@ -168,16 +168,16 @@
         "textMode": "value"
       },
       "gridPos": {
-        "x": 6,
+        "x": 5,
         "y": 1,
-        "w": 6,
+        "w": 5,
         "h": 4
       },
       "id": 3
     },
     {
       "type": "stat",
-      "title": "Machines using the internet",
+      "title": "Machines trying the internet",
       "description": "UEs whose LAN sent traffic to a public (non-private) address.",
       "datasource": {
         "type": "grafana-clickhouse-datasource",
@@ -191,7 +191,7 @@
             "uid": "akvorado-ch"
           },
           "editorType": "sql",
-          "rawSql": "SELECT uniqExact(SrcNetName) AS ues FROM flows\nWHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND (FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) AND (NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '10.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '172.16.0.0/12') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '192.168.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '100.64.0.0/10') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '127.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '169.254.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '224.0.0.0/4')) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote}))",
+          "rawSql": "SELECT uniqExact(if(SrcNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), SrcNetName, replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''))) AS ues FROM flows\nWHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND (FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) AND (NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '10.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '172.16.0.0/12') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '192.168.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '100.64.0.0/10') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '127.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '169.254.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '224.0.0.0/4')) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote}))",
           "format": 1,
           "queryType": "table"
         }
@@ -227,12 +227,71 @@
         "textMode": "value"
       },
       "gridPos": {
-        "x": 12,
+        "x": 10,
         "y": 1,
-        "w": 6,
+        "w": 5,
         "h": 4
       },
       "id": 4
+    },
+    {
+      "type": "stat",
+      "title": "...with no reply",
+      "description": "UEs that sent to public addresses but got nothing back from any public address.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "akvorado-ch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "akvorado-ch"
+          },
+          "editorType": "sql",
+          "rawSql": "SELECT count() AS ues FROM (\n  SELECT DISTINCT if(SrcNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), SrcNetName, replaceOne(IPv6NumToString(SrcAddr), '::ffff:', '')) AS ue FROM flows\n  WHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND (FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) AND (NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '10.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '172.16.0.0/12') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '192.168.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '100.64.0.0/10') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '127.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '169.254.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '224.0.0.0/4')) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote})))\nWHERE ue NOT IN (\n  SELECT DISTINCT if(DstNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), DstNetName, replaceOne(IPv6NumToString(DstAddr), '::ffff:', '')) FROM flows\n  WHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND (FlowDirection = 'ingress' AND DstNetRole IN ('ue-lan', 'ue-loopback')) AND (NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '10.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '172.16.0.0/12') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '192.168.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '100.64.0.0/10') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '127.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '169.254.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '224.0.0.0/4')) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote})))",
+          "format": 1,
+          "queryType": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "gridPos": {
+        "x": 15,
+        "y": 1,
+        "w": 5,
+        "h": 4
+      },
+      "id": 5
     },
     {
       "type": "stat",
@@ -286,12 +345,12 @@
         "textMode": "value"
       },
       "gridPos": {
-        "x": 18,
+        "x": 20,
         "y": 1,
-        "w": 6,
+        "w": 4,
         "h": 4
       },
-      "id": 5
+      "id": 6
     },
     {
       "type": "row",
@@ -304,7 +363,7 @@
         "w": 24,
         "h": 1
       },
-      "id": 6
+      "id": 7
     },
     {
       "type": "table",
@@ -388,7 +447,7 @@
         "w": 10,
         "h": 12
       },
-      "id": 7
+      "id": 8
     },
     {
       "type": "timeseries",
@@ -414,6 +473,7 @@
       "fieldConfig": {
         "defaults": {
           "unit": "bps",
+          "displayName": "${__field.labels.machine}",
           "custom": {
             "drawStyle": "line",
             "fillOpacity": 30,
@@ -430,7 +490,7 @@
       "options": {
         "legend": {
           "displayMode": "table",
-          "placement": "right",
+          "placement": "bottom",
           "calcs": [
             "mean",
             "max"
@@ -447,9 +507,9 @@
         "x": 10,
         "y": 6,
         "w": 14,
-        "h": 12
+        "h": 16
       },
-      "id": 8
+      "id": 9
     },
     {
       "type": "row",
@@ -458,11 +518,11 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 18,
+        "y": 22,
         "w": 24,
         "h": 1
       },
-      "id": 9
+      "id": 10
     },
     {
       "type": "table",
@@ -518,11 +578,11 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 19,
+        "y": 23,
         "w": 12,
         "h": 11
       },
-      "id": 10
+      "id": 11
     },
     {
       "type": "bargauge",
@@ -569,11 +629,11 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 19,
+        "y": 23,
         "w": 6,
         "h": 11
       },
-      "id": 11
+      "id": 12
     },
     {
       "type": "table",
@@ -629,11 +689,11 @@
       },
       "gridPos": {
         "x": 18,
-        "y": 19,
+        "y": 23,
         "w": 6,
         "h": 11
       },
-      "id": 12
+      "id": 13
     },
     {
       "type": "row",
@@ -642,16 +702,16 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 30,
+        "y": 34,
         "w": 24,
         "h": 1
       },
-      "id": 13
+      "id": 14
     },
     {
       "type": "table",
       "title": "Machines reaching public addresses",
-      "description": "UE LAN -> any address outside 10/8, 172.16/12, 192.168/16, 100.64/10 and multicast.",
+      "description": "UE LAN -> public address (anything outside 10/8, 172.16/12, 192.168/16, 100.64/10, multicast), matched with the replies (same address and port, the other way). Answered = No: nothing came back (for TCP that means only connection attempts, ~60-byte SYNs).",
       "datasource": {
         "type": "grafana-clickhouse-datasource",
         "uid": "akvorado-ch"
@@ -664,7 +724,7 @@
             "uid": "akvorado-ch"
           },
           "editorType": "sql",
-          "rawSql": "SELECT if(SrcNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), SrcNetName, replaceOne(IPv6NumToString(SrcAddr), '::ffff:', '')) AS UE, any(SrcNetTenant) AS Machine, replaceOne(IPv6NumToString(DstAddr), '::ffff:', '') AS Destination,\n       multiIf(Proto = 6, 'TCP', Proto = 17, 'UDP', Proto = 1, 'ICMP', Proto = 50, 'ESP', toString(Proto)) AS Protocol, DstPort AS Port, sum(Bytes) AS Bytes, count() AS Flows,\n       max(TimeReceived) AS `Last seen`\nFROM flows\nWHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND (FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) AND (NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '10.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '172.16.0.0/12') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '192.168.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '100.64.0.0/10') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '127.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '169.254.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '224.0.0.0/4')) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote}))\nGROUP BY UE, Destination, Protocol, Port ORDER BY Bytes DESC LIMIT 200",
+          "rawSql": "SELECT o.UE AS UE, o.Machine AS Machine, o.Destination AS Destination, o.Protocol AS Protocol,\n       o.Port AS Port, o.pkts AS `Packets out`, r.pkts AS `Packets back`,\n       if(r.pkts > 0, 'Yes', 'No') AS Answered,\n       o.bytes AS `Bytes out`, r.bytes AS `Bytes back`, o.last AS `Last sent`\nFROM (\n  SELECT if(SrcNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), SrcNetName, replaceOne(IPv6NumToString(SrcAddr), '::ffff:', '')) AS UE, any(SrcNetTenant) AS Machine, replaceOne(IPv6NumToString(DstAddr), '::ffff:', '') AS Destination,\n         multiIf(Proto = 6, 'TCP', Proto = 17, 'UDP', Proto = 1, 'ICMP', Proto = 50, 'ESP', toString(Proto)) AS Protocol, DstPort AS Port, sum(Packets) AS pkts, sum(Bytes) AS bytes,\n         max(TimeReceived) AS last\n  FROM flows WHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND (FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) AND (NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '10.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '172.16.0.0/12') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '192.168.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '100.64.0.0/10') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '127.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '169.254.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '224.0.0.0/4')) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote}))\n  GROUP BY UE, Destination, Protocol, Port) AS o\nLEFT JOIN (\n  SELECT if(DstNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), DstNetName, replaceOne(IPv6NumToString(DstAddr), '::ffff:', '')) AS UE, replaceOne(IPv6NumToString(SrcAddr), '::ffff:', '') AS Destination, multiIf(Proto = 6, 'TCP', Proto = 17, 'UDP', Proto = 1, 'ICMP', Proto = 50, 'ESP', toString(Proto)) AS Protocol,\n         SrcPort AS Port, sum(Packets) AS pkts, sum(Bytes) AS bytes\n  FROM flows WHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND (FlowDirection = 'ingress' AND DstNetRole IN ('ue-lan', 'ue-loopback')) AND (NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '10.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '172.16.0.0/12') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '192.168.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '100.64.0.0/10') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '127.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '169.254.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '224.0.0.0/4')) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote}))\n  GROUP BY UE, Destination, Protocol, Port) AS r\n  ON o.UE = r.UE AND o.Destination = r.Destination AND o.Protocol = r.Protocol AND o.Port = r.Port\nORDER BY `Bytes out` DESC LIMIT 200",
           "format": 1,
           "queryType": "table"
         }
@@ -679,7 +739,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Bytes"
+              "options": "Bytes out"
             },
             "properties": [
               {
@@ -691,12 +751,56 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Last seen"
+              "options": "Bytes back"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "decbytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Last sent"
             },
             "properties": [
               {
                 "id": "unit",
                 "value": "dateTimeAsLocal"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Answered"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "Yes": {
+                        "color": "green",
+                        "index": 0
+                      },
+                      "No": {
+                        "color": "red",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
               }
             ]
           }
@@ -707,23 +811,23 @@
         "cellHeight": "sm",
         "sortBy": [
           {
-            "displayName": "Bytes",
+            "displayName": "Bytes out",
             "desc": true
           }
         ]
       },
       "gridPos": {
         "x": 0,
-        "y": 31,
-        "w": 14,
-        "h": 11
+        "y": 35,
+        "w": 15,
+        "h": 12
       },
-      "id": 14
+      "id": 15
     },
     {
       "type": "timeseries",
-      "title": "Internet traffic by machine",
-      "description": "UE -> public address traffic per machine.",
+      "title": "Internet: sent vs replies",
+      "description": "All UE traffic to public addresses, and all traffic back from them. Replies at zero means no UE is getting answers from the internet.",
       "datasource": {
         "type": "grafana-clickhouse-datasource",
         "uid": "akvorado-ch"
@@ -736,7 +840,7 @@
             "uid": "akvorado-ch"
           },
           "editorType": "sql",
-          "rawSql": "SELECT $__timeInterval(TimeReceived) AS time,\n       if(SrcNetTenant != '', SrcNetTenant, if(SrcNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), SrcNetName, replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''))) AS machine, sum(Bytes) * 8 / $__interval_s AS bps\nFROM flows\nWHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND (FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) AND (NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '10.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '172.16.0.0/12') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '192.168.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '100.64.0.0/10') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '127.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '169.254.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '224.0.0.0/4')) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote}))\nGROUP BY time, machine ORDER BY time",
+          "rawSql": "SELECT $__timeInterval(TimeReceived) AS time,\n       sumIf(Bytes, (FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) AND (NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '10.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '172.16.0.0/12') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '192.168.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '100.64.0.0/10') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '127.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '169.254.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '224.0.0.0/4'))) * 8 / $__interval_s AS `Sent to internet`,\n       sumIf(Bytes, (FlowDirection = 'ingress' AND DstNetRole IN ('ue-lan', 'ue-loopback')) AND (NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '10.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '172.16.0.0/12') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '192.168.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '100.64.0.0/10') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '127.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '169.254.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''), '224.0.0.0/4'))) * 8 / $__interval_s AS `Replies from internet`\nFROM flows\nWHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND ((FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) OR (FlowDirection = 'ingress' AND DstNetRole IN ('ue-lan', 'ue-loopback'))) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote}))\nGROUP BY time ORDER BY time",
           "format": 0,
           "queryType": "timeseries"
         }
@@ -746,10 +850,10 @@
           "unit": "bps",
           "custom": {
             "drawStyle": "line",
-            "fillOpacity": 30,
+            "fillOpacity": 0,
             "lineWidth": 1,
             "stacking": {
-              "mode": "normal",
+              "mode": "none",
               "group": "A"
             },
             "showPoints": "never"
@@ -760,7 +864,7 @@
       "options": {
         "legend": {
           "displayMode": "table",
-          "placement": "right",
+          "placement": "bottom",
           "calcs": [
             "mean",
             "max"
@@ -774,12 +878,12 @@
         }
       },
       "gridPos": {
-        "x": 14,
-        "y": 31,
-        "w": 10,
-        "h": 11
+        "x": 15,
+        "y": 35,
+        "w": 9,
+        "h": 12
       },
-      "id": 15
+      "id": 16
     },
     {
       "type": "row",
@@ -788,11 +892,11 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 42,
+        "y": 47,
         "w": 24,
         "h": 1
       },
-      "id": 16
+      "id": 17
     },
     {
       "type": "table",
@@ -891,11 +995,11 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 43,
+        "y": 48,
         "w": 14,
         "h": 12
       },
-      "id": 17
+      "id": 18
     },
     {
       "type": "timeseries",
@@ -921,6 +1025,7 @@
       "fieldConfig": {
         "defaults": {
           "unit": "bps",
+          "displayName": "${__field.labels.tag}",
           "custom": {
             "drawStyle": "line",
             "fillOpacity": 0,
@@ -937,7 +1042,7 @@
       "options": {
         "legend": {
           "displayMode": "table",
-          "placement": "right",
+          "placement": "bottom",
           "calcs": [
             "mean",
             "max"
@@ -952,11 +1057,11 @@
       },
       "gridPos": {
         "x": 14,
-        "y": 43,
+        "y": 48,
         "w": 10,
         "h": 12
       },
-      "id": 18
+      "id": 19
     }
   ]
 }

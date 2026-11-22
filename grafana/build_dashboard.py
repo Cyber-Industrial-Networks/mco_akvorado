@@ -62,6 +62,7 @@ WHO = f"if({MACHINE} != '', {MACHINE}, {UE})"
 PRIVATE = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10",
            "127.0.0.0/8", "169.254.0.0/16", "224.0.0.0/4"]
 PUBLIC_DST = "(" + " AND ".join(f"NOT isIPAddressInRange({ip('DstAddr')}, '{p}')" for p in PRIVATE) + ")"
+PUBLIC_SRC = "(" + " AND ".join(f"NOT isIPAddressInRange({ip('SrcAddr')}, '{p}')" for p in PRIVATE) + ")"
 PROTO = "multiIf(Proto = 6, 'TCP', Proto = 17, 'UDP', Proto = 1, 'ICMP', Proto = 50, 'ESP', toString(Proto))"
 BPS = "sum(Bytes) * 8 / $__interval_s"
 
@@ -109,9 +110,14 @@ def stat(title, sql, unit, desc=""):
                         "colorMode": "value", "graphMode": "none", "textMode": "value"}}
 
 
-def table(title, sql, units=None, desc="", sort=None):
+def table(title, sql, units=None, desc="", sort=None, answered=None):
     overrides = [{"matcher": {"id": "byName", "options": name},
                   "properties": [{"id": "unit", "value": unit}]} for name, unit in (units or {}).items()]
+    if answered:  # Yes = green, No = red text
+        overrides.append({"matcher": {"id": "byName", "options": answered}, "properties": [
+            {"id": "mappings", "value": [{"type": "value", "options": {
+                "Yes": {"color": "green", "index": 0}, "No": {"color": "red", "index": 1}}}]},
+            {"id": "custom.cellOptions", "value": {"type": "color-text"}}]})
     return {"type": "table", "title": title, "description": desc, "datasource": DS,
             "targets": [target(sql, "table")],
             "fieldConfig": {"defaults": {"custom": {"filterable": True}}, "overrides": overrides},
@@ -119,14 +125,18 @@ def table(title, sql, units=None, desc="", sort=None):
                         "sortBy": [{"displayName": sort, "desc": True}] if sort else []}}
 
 
-def series(title, sql, unit="bps", desc="", stack=True):
+def series(title, sql, unit="bps", desc="", stack=True, label=None):
+    """label: the SQL column that names each series (shown alone in the legend, not 'bps <name>')."""
+    defaults = {"unit": unit}
+    if label:
+        defaults["displayName"] = "${__field.labels.%s}" % label
     return {"type": "timeseries", "title": title, "description": desc, "datasource": DS,
             "targets": [target(sql, "timeseries")],
-            "fieldConfig": {"defaults": {"unit": unit, "custom": {
+            "fieldConfig": {"defaults": {**defaults, "custom": {
                 "drawStyle": "line", "fillOpacity": 30 if stack else 0, "lineWidth": 1,
                 "stacking": {"mode": "normal" if stack else "none", "group": "A"},
                 "showPoints": "never"}}, "overrides": []},
-            "options": {"legend": {"displayMode": "table", "placement": "right",
+            "options": {"legend": {"displayMode": "table", "placement": "bottom",
                                    "calcs": ["mean", "max"], "sortBy": "Mean", "sortDesc": True},
                         "tooltip": {"mode": "multi", "sort": "desc"}}}
 
@@ -145,19 +155,27 @@ row("Overview")
 add(stat("UE traffic (decrypted)", f"""
 SELECT sum(Bytes) AS bytes FROM flows
 WHERE {WHERE} AND {DECRYPTED} AND {MACHINE_VAR}""", "decbytes",
-         "Decrypted traffic to and from UE LANs and loopbacks, both directions."), 6, 4)
+         "Decrypted traffic to and from UE LANs and loopbacks, both directions."), 5, 4)
 add(stat("Active UEs", f"""
 SELECT uniqExact({UE}) AS ues FROM flows
 WHERE {WHERE} AND {DECRYPTED} AND {MACHINE_VAR} AND {UE} != ''""", "none",
-         "UEs with decrypted traffic in the time range."), 6, 4)
-add(stat("Machines using the internet", f"""
-SELECT uniqExact(SrcNetName) AS ues FROM flows
+         "UEs with decrypted traffic in the time range."), 5, 4)
+add(stat("Machines trying the internet", f"""
+SELECT uniqExact({NAME_OR_IP('Src')}) AS ues FROM flows
 WHERE {WHERE} AND {UE_OUT} AND {PUBLIC_DST} AND {MACHINE_VAR}""", "none",
-         "UEs whose LAN sent traffic to a public (non-private) address."), 6, 4)
+         "UEs whose LAN sent traffic to a public (non-private) address."), 5, 4)
+add(stat("...with no reply", f"""
+SELECT count() AS ues FROM (
+  SELECT DISTINCT {NAME_OR_IP('Src')} AS ue FROM flows
+  WHERE {WHERE} AND {UE_OUT} AND {PUBLIC_DST} AND {MACHINE_VAR})
+WHERE ue NOT IN (
+  SELECT DISTINCT {NAME_OR_IP('Dst')} FROM flows
+  WHERE {WHERE} AND {UE_IN} AND {PUBLIC_SRC} AND {MACHINE_VAR})""", "none",
+         "UEs that sent to public addresses but got nothing back from any public address."), 5, 4)
 add(stat("UEs carrying data via standby TAG", f"""
 SELECT uniqExact({UE}) AS ues FROM flows
 WHERE {WHERE} AND {DECRYPTED} AND ExporterSite = 'oc3' AND {MACHINE_VAR}""", "none",
-         "OC4-TAG01 is primary; decrypted traffic through OC3-TAG01 means the UE has failed over."), 6, 4)
+         "OC4-TAG01 is primary; decrypted traffic through OC3-TAG01 means the UE has failed over."), 4, 4)
 
 # --- Top UEs / machines
 row("Top UEs and machines")
@@ -182,7 +200,8 @@ SELECT $__timeInterval(TimeReceived) AS time, {WHO} AS machine, {BPS} AS bps
 FROM flows
 WHERE {WHERE} AND {DECRYPTED} AND {MACHINE_VAR} AND {WHO} IN (SELECT who FROM top)
 GROUP BY time, machine ORDER BY time""",
-           desc="Decrypted traffic, both directions, for the 10 busiest machines (UE name when the machine is unknown)."), 14, 12)
+           desc="Decrypted traffic, both directions, for the 10 busiest machines (UE name when the machine is unknown).",
+           label="machine"), 14, 16)
 
 # --- Destinations & apps
 row("Destinations and applications")
@@ -212,20 +231,37 @@ GROUP BY Source, Protocol, Port ORDER BY Bytes DESC LIMIT 100""",
 # --- Internet & DNS
 row("Internet and public DNS")
 add(table("Machines reaching public addresses", f"""
-SELECT {NAME_OR_IP('Src')} AS UE, any(SrcNetTenant) AS Machine, {ip('DstAddr')} AS Destination,
-       {PROTO} AS Protocol, DstPort AS Port, sum(Bytes) AS Bytes, count() AS Flows,
-       max(TimeReceived) AS `Last seen`
-FROM flows
-WHERE {WHERE} AND {UE_OUT} AND {PUBLIC_DST} AND {MACHINE_VAR}
-GROUP BY UE, Destination, Protocol, Port ORDER BY Bytes DESC LIMIT 200""",
-          {"Bytes": "decbytes", "Last seen": "dateTimeAsLocal"},
-          "UE LAN -> any address outside 10/8, 172.16/12, 192.168/16, 100.64/10 and multicast.", "Bytes"), 14, 11)
-add(series("Internet traffic by machine", f"""
+SELECT o.UE AS UE, o.Machine AS Machine, o.Destination AS Destination, o.Protocol AS Protocol,
+       o.Port AS Port, o.pkts AS `Packets out`, r.pkts AS `Packets back`,
+       if(r.pkts > 0, 'Yes', 'No') AS Answered,
+       o.bytes AS `Bytes out`, r.bytes AS `Bytes back`, o.last AS `Last sent`
+FROM (
+  SELECT {NAME_OR_IP('Src')} AS UE, any(SrcNetTenant) AS Machine, {ip('DstAddr')} AS Destination,
+         {PROTO} AS Protocol, DstPort AS Port, sum(Packets) AS pkts, sum(Bytes) AS bytes,
+         max(TimeReceived) AS last
+  FROM flows WHERE {WHERE} AND {UE_OUT} AND {PUBLIC_DST} AND {MACHINE_VAR}
+  GROUP BY UE, Destination, Protocol, Port) AS o
+LEFT JOIN (
+  SELECT {NAME_OR_IP('Dst')} AS UE, {ip('SrcAddr')} AS Destination, {PROTO} AS Protocol,
+         SrcPort AS Port, sum(Packets) AS pkts, sum(Bytes) AS bytes
+  FROM flows WHERE {WHERE} AND {UE_IN} AND {PUBLIC_SRC} AND {MACHINE_VAR}
+  GROUP BY UE, Destination, Protocol, Port) AS r
+  ON o.UE = r.UE AND o.Destination = r.Destination AND o.Protocol = r.Protocol AND o.Port = r.Port
+ORDER BY `Bytes out` DESC LIMIT 200""",
+          {"Bytes out": "decbytes", "Bytes back": "decbytes", "Last sent": "dateTimeAsLocal"},
+          "UE LAN -> public address (anything outside 10/8, 172.16/12, 192.168/16, 100.64/10, multicast), "
+          "matched with the replies (same address and port, the other way). Answered = No: nothing came back "
+          "(for TCP that means only connection attempts, ~60-byte SYNs).", "Bytes out",
+          answered="Answered"), 15, 12)
+add(series("Internet: sent vs replies", f"""
 SELECT $__timeInterval(TimeReceived) AS time,
-       if(SrcNetTenant != '', SrcNetTenant, {NAME_OR_IP('Src')}) AS machine, {BPS} AS bps
+       sumIf(Bytes, {UE_OUT} AND {PUBLIC_DST}) * 8 / $__interval_s AS `Sent to internet`,
+       sumIf(Bytes, {UE_IN} AND {PUBLIC_SRC}) * 8 / $__interval_s AS `Replies from internet`
 FROM flows
-WHERE {WHERE} AND {UE_OUT} AND {PUBLIC_DST} AND {MACHINE_VAR}
-GROUP BY time, machine ORDER BY time""", desc="UE -> public address traffic per machine."), 10, 11)
+WHERE {WHERE} AND {DECRYPTED} AND {MACHINE_VAR}
+GROUP BY time ORDER BY time""",
+           desc="All UE traffic to public addresses, and all traffic back from them. Replies at zero "
+                "means no UE is getting answers from the internet.", stack=False), 9, 12)
 
 # --- Tunnel health
 row("Tunnel health (TAG headends)")
@@ -254,7 +290,8 @@ SELECT $__timeInterval(TimeReceived) AS time, upper(ExporterSite) AS tag, {BPS} 
 FROM flows
 WHERE {WHERE} AND {ESP_IN} AND {MACHINE_VAR}
 GROUP BY time, tag ORDER BY time""",
-           desc="ESP/IKE from UEs to each TAG. A shift from OC4 to OC3 = UEs failing over.", stack=False), 10, 12)
+           desc="ESP/IKE from UEs to each TAG. A shift from OC4 to OC3 = UEs failing over.", stack=False,
+           label="tag"), 10, 12)
 
 dashboard = {
     "uid": "fleet-traffic",
