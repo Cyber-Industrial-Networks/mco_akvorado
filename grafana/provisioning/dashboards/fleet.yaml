@@ -1,0 +1,10 @@
+apiVersion: 1
+providers:
+  - name: fleet
+    type: file
+    # Dashboards live in git (mco_akvorado/grafana/dashboards). UI edits can't be saved
+    # over them; use "Save as" for a personal copy, or change the JSON and redeploy.
+    allowUiUpdates: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

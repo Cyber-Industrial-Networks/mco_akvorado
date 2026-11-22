@@ -1,17 +1,14 @@
 ---
 networks:
-  # Fills Src/DstNetName and Src/DstNetRole. Ranges from cellwatch's defaults.
-  # Later: a network-source from the fleet-monitor API (per-UE hostname / machine name).
+  # Fills Src/DstNetName and Src/DstNetRole. Ranges from cellwatch's defaults. The UE ranges only set
+  # the role: the name (UE034) and tenant (machine) come from the fleet-ues source below.
   networks:
     10.231.0.0/18:
-      name: ue-lan
       role: ue-lan
     # UE Cellular0/4/0 addresses: outer IPsec (ESP / IKE) endpoints. Range from the TAG IKEv2 profile.
     10.231.64.0/22:
-      name: ue-cellular
       role: ue-cellular
     10.231.68.0/23:
-      name: ue-loopback
       role: ue-loopback
     # flt core: TAG headend loopbacks (IPsec endpoints) and point-to-point links.
     10.231.128.0/24:

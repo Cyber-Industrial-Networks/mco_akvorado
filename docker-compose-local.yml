@@ -34,8 +34,49 @@ services:
   clickhouse:
     # Shares the box with Graylog/OpenSearch; ClickHouse sizes itself to the cgroup limit.
     mem_limit: 6g
+    volumes:
+      # Read-only "grafana" user for the fleet traffic dashboard.
+      - ../grafana/clickhouse-user.xml:/etc/clickhouse-server/users.d/grafana.xml:ro
+
+  # Fleet traffic dashboard (not upstream's grafana profile, which only shows Akvorado's
+  # own metrics). Reads ClickHouse as the read-only "grafana" user. Localhost only:
+  # nginx :9445 signs users in (fleet-monitor/ISE) and passes Remote-User.
+  grafana-flows:
+    image: grafana/grafana-oss:13.0.2
+    restart: unless-stopped
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3001:3000/tcp"
+    environment:
+      GF_PLUGINS_PREINSTALL_SYNC: grafana-clickhouse-datasource@4.23.4
+      GF_SERVER_ROOT_URL: https://10.231.137.100:9445/
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana-admin-password
+      # Sign-in: trust Remote-User only from nginx, which reaches the container through
+      # docker-proxy, i.e. from this network's gateway.
+      GF_AUTH_PROXY_ENABLED: "true"
+      GF_AUTH_PROXY_HEADER_NAME: Remote-User
+      GF_AUTH_PROXY_HEADER_PROPERTY: username
+      GF_AUTH_PROXY_AUTO_SIGN_UP: "true"
+      GF_AUTH_PROXY_WHITELIST: 247.16.14.1
+      GF_AUTH_SIGNOUT_REDIRECT_URL: /api/auth/logout
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_AUTO_ASSIGN_ORG_ROLE: Viewer
+      GF_USERS_VIEWERS_CAN_EDIT: "true"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/fleet-traffic.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+    volumes:
+      - akvorado-grafana-flows:/var/lib/grafana
+      - ../grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - /srv/akvorado/grafana-admin-password.txt:/run/secrets/grafana-admin-password:ro
 
 volumes:
+  akvorado-grafana-flows:
   # Flow data on the dedicated LV rather than /var/lib/docker on the root LV.
   akvorado-clickhouse:
     driver: local

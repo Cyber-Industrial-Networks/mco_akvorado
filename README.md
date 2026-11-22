@@ -83,3 +83,18 @@ the decrypted traffic appear; split them with SrcNetRole/DstNetRole `vpn-headend
 `tenant` = machine (register asset, else cellwatch OpGuard name). In the console: group by
 `SrcNetName`/`DstNetName` (UE) or `SrcNetTenant`/`DstNetTenant` (machine).
 Check: `curl -s 127.0.0.1:8082/api/v0/outlet/metrics | grep remotedatasource`.
+
+## Fleet traffic dashboard (Grafana)
+
+**https://10.231.137.100:9445/** – same fleet-monitor sign-in; everyone is a Grafana Viewer (can explore, can't
+save). Service `grafana-flows` (grafana-oss 13.0.2 + grafana-clickhouse-datasource 4.23.4) on 127.0.0.1:3001,
+reading ClickHouse as the read-only user `grafana` (`grafana/clickhouse-user.xml`, Docker network only).
+
+- Dashboard "Fleet UE traffic": overview, top UEs/machines, destinations and services, internet/public DNS,
+  tunnel health per UE and per TAG. Machine filter at the top. Raw flows only: 7-day history.
+- **Edit the SQL in `grafana/build_dashboard.py`**, then `python3 grafana/build_dashboard.py` (writes
+  `grafana/dashboards/fleet-traffic.json`) and commit both. Test every panel query on the server first:
+  `python3 -I grafana/build_dashboard.py --test http://127.0.0.1:8082/clickhouse/`. Deploy: `git pull` +
+  `sudo bash install.sh` (Grafana re-reads the dashboard within 30 s).
+- Break-glass admin: `ssh -L 3001:127.0.0.1:3001 fleet-mon` → http://localhost:3001, user `admin`, password in
+  `/srv/akvorado/grafana-admin-password.txt`.

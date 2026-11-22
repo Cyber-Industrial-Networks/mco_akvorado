@@ -1,0 +1,13 @@
+apiVersion: 1
+datasources:
+  - name: Akvorado ClickHouse
+    uid: akvorado-ch
+    type: grafana-clickhouse-datasource
+    isDefault: true
+    editable: false
+    jsonData:
+      host: clickhouse
+      port: 9000
+      protocol: native
+      username: grafana
+      defaultDatabase: default

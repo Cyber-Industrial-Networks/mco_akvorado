@@ -1,0 +1,29 @@
+<!-- Read-only ClickHouse user for the fleet traffic Grafana (grafana-flows service).
+     Mounted into clickhouse:/etc/clickhouse-server/users.d/ by docker-compose-local.yml.
+     No password, but only the akvorado Docker network may use it (IPv4 and IPv6, since
+     containers on that network may connect over either), and readonly=2 means SELECT only
+     (query settings may still be changed, which the Grafana plugin needs). -->
+<clickhouse>
+  <profiles>
+    <grafana_ro>
+      <readonly>2</readonly>
+      <max_execution_time>60</max_execution_time>
+      <max_memory_usage>2000000000</max_memory_usage>
+    </grafana_ro>
+  </profiles>
+  <users>
+    <grafana>
+      <no_password/>
+      <networks>
+        <ip>247.16.14.0/24</ip>
+        <ip>fd1c:8ce3:6fb:1::/64</ip>
+      </networks>
+      <profile>grafana_ro</profile>
+      <quota>default</quota>
+      <grants>
+        <query>GRANT SELECT ON default.*</query>
+        <query>GRANT SELECT ON system.*</query>
+      </grants>
+    </grafana>
+  </users>
+</clickhouse>

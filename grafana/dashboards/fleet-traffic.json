@@ -1,0 +1,962 @@
+{
+  "uid": "fleet-traffic",
+  "title": "Fleet UE traffic",
+  "tags": [
+    "akvorado",
+    "fleet"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "schemaVersion": 39,
+  "description": "NetFlow from the TAG IPsec headends via Akvorado (raw flows, 7-day retention).",
+  "templating": {
+    "list": [
+      {
+        "name": "machine",
+        "label": "Machine",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-clickhouse-datasource",
+          "uid": "akvorado-ch"
+        },
+        "query": "SELECT DISTINCT SrcNetTenant FROM flows WHERE TimeReceived > now() - INTERVAL 1 DAY AND SrcNetRole IN ('ue-lan', 'ue-loopback') AND SrcNetTenant != '' ORDER BY 1",
+        "definition": "machines seen in the last day",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "allValue": "__all",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Overview",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "id": 1
+    },
+    {
+      "type": "stat",
+      "title": "UE traffic (decrypted)",
+      "description": "Decrypted traffic to and from UE LANs and loopbacks, both directions.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "akvorado-ch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "akvorado-ch"
+          },
+          "editorType": "sql",
+          "rawSql": "SELECT sum(Bytes) AS bytes FROM flows\nWHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND ((FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) OR (FlowDirection = 'ingress' AND DstNetRole IN ('ue-lan', 'ue-loopback'))) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote}))",
+          "format": 1,
+          "queryType": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "id": 2
+    },
+    {
+      "type": "stat",
+      "title": "Active UEs",
+      "description": "UEs with decrypted traffic in the time range.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "akvorado-ch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "akvorado-ch"
+          },
+          "editorType": "sql",
+          "rawSql": "SELECT uniqExact(if(FlowDirection = 'egress', if(SrcNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), SrcNetName, replaceOne(IPv6NumToString(SrcAddr), '::ffff:', '')), if(DstNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), DstNetName, replaceOne(IPv6NumToString(DstAddr), '::ffff:', '')))) AS ues FROM flows\nWHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND ((FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) OR (FlowDirection = 'ingress' AND DstNetRole IN ('ue-lan', 'ue-loopback'))) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote})) AND if(FlowDirection = 'egress', if(SrcNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), SrcNetName, replaceOne(IPv6NumToString(SrcAddr), '::ffff:', '')), if(DstNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), DstNetName, replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''))) != ''",
+          "format": 1,
+          "queryType": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "id": 3
+    },
+    {
+      "type": "stat",
+      "title": "Machines using the internet",
+      "description": "UEs whose LAN sent traffic to a public (non-private) address.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "akvorado-ch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "akvorado-ch"
+          },
+          "editorType": "sql",
+          "rawSql": "SELECT uniqExact(SrcNetName) AS ues FROM flows\nWHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND (FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) AND (NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '10.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '172.16.0.0/12') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '192.168.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '100.64.0.0/10') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '127.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '169.254.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '224.0.0.0/4')) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote}))",
+          "format": 1,
+          "queryType": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "id": 4
+    },
+    {
+      "type": "stat",
+      "title": "UEs carrying data via standby TAG",
+      "description": "OC4-TAG01 is primary; decrypted traffic through OC3-TAG01 means the UE has failed over.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "akvorado-ch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "akvorado-ch"
+          },
+          "editorType": "sql",
+          "rawSql": "SELECT uniqExact(if(FlowDirection = 'egress', if(SrcNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), SrcNetName, replaceOne(IPv6NumToString(SrcAddr), '::ffff:', '')), if(DstNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), DstNetName, replaceOne(IPv6NumToString(DstAddr), '::ffff:', '')))) AS ues FROM flows\nWHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND ((FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) OR (FlowDirection = 'ingress' AND DstNetRole IN ('ue-lan', 'ue-loopback'))) AND ExporterSite = 'oc3' AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote}))",
+          "format": 1,
+          "queryType": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "id": 5
+    },
+    {
+      "type": "row",
+      "title": "Top UEs and machines",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 1
+      },
+      "id": 6
+    },
+    {
+      "type": "table",
+      "title": "Top UEs",
+      "description": "Decrypted traffic per UE. Machine = register asset, or the name cellwatch found on the UE LAN.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "akvorado-ch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "akvorado-ch"
+          },
+          "editorType": "sql",
+          "rawSql": "SELECT if(FlowDirection = 'egress', if(SrcNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), SrcNetName, replaceOne(IPv6NumToString(SrcAddr), '::ffff:', '')), if(DstNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), DstNetName, replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''))) AS UE, any(if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant)) AS Machine,\n       sumIf(Bytes, FlowDirection = 'egress') AS `From UE`,\n       sumIf(Bytes, FlowDirection = 'ingress') AS `To UE`,\n       sum(Bytes) AS Total, count() AS Flows,\n       uniqExactIf(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), FlowDirection = 'egress') AS Destinations\nFROM flows\nWHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND ((FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) OR (FlowDirection = 'ingress' AND DstNetRole IN ('ue-lan', 'ue-loopback'))) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote})) AND if(FlowDirection = 'egress', if(SrcNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), SrcNetName, replaceOne(IPv6NumToString(SrcAddr), '::ffff:', '')), if(DstNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), DstNetName, replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''))) != ''\nGROUP BY UE ORDER BY Total DESC LIMIT 100",
+          "format": 1,
+          "queryType": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "From UE"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "decbytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "To UE"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "decbytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "decbytes"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Total",
+            "desc": true
+          }
+        ]
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 10,
+        "h": 12
+      },
+      "id": 7
+    },
+    {
+      "type": "timeseries",
+      "title": "Traffic by machine (top 10)",
+      "description": "Decrypted traffic, both directions, for the 10 busiest machines (UE name when the machine is unknown).",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "akvorado-ch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "akvorado-ch"
+          },
+          "editorType": "sql",
+          "rawSql": "WITH top AS (\n  SELECT if(if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) != '', if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant), if(FlowDirection = 'egress', if(SrcNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), SrcNetName, replaceOne(IPv6NumToString(SrcAddr), '::ffff:', '')), if(DstNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), DstNetName, replaceOne(IPv6NumToString(DstAddr), '::ffff:', '')))) AS who FROM flows\n  WHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND ((FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) OR (FlowDirection = 'ingress' AND DstNetRole IN ('ue-lan', 'ue-loopback'))) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote}))\n  GROUP BY who ORDER BY sum(Bytes) DESC LIMIT 10)\nSELECT $__timeInterval(TimeReceived) AS time, if(if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) != '', if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant), if(FlowDirection = 'egress', if(SrcNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), SrcNetName, replaceOne(IPv6NumToString(SrcAddr), '::ffff:', '')), if(DstNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), DstNetName, replaceOne(IPv6NumToString(DstAddr), '::ffff:', '')))) AS machine, sum(Bytes) * 8 / $__interval_s AS bps\nFROM flows\nWHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND ((FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) OR (FlowDirection = 'ingress' AND DstNetRole IN ('ue-lan', 'ue-loopback'))) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote})) AND if(if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) != '', if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant), if(FlowDirection = 'egress', if(SrcNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), SrcNetName, replaceOne(IPv6NumToString(SrcAddr), '::ffff:', '')), if(DstNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), DstNetName, replaceOne(IPv6NumToString(DstAddr), '::ffff:', '')))) IN (SELECT who FROM top)\nGROUP BY time, machine ORDER BY time",
+          "format": 0,
+          "queryType": "timeseries"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 30,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "sortBy": "Mean",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "gridPos": {
+        "x": 10,
+        "y": 6,
+        "w": 14,
+        "h": 12
+      },
+      "id": 8
+    },
+    {
+      "type": "row",
+      "title": "Destinations and applications",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 18,
+        "w": 24,
+        "h": 1
+      },
+      "id": 9
+    },
+    {
+      "type": "table",
+      "title": "Where UEs send traffic",
+      "description": "UE LAN / loopback -> destination, decrypted. UEs = how many UEs sent to it.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "akvorado-ch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "akvorado-ch"
+          },
+          "editorType": "sql",
+          "rawSql": "SELECT replaceOne(IPv6NumToString(DstAddr), '::ffff:', '') AS Destination, any(DstNetName) AS Label, multiIf(Proto = 6, 'TCP', Proto = 17, 'UDP', Proto = 1, 'ICMP', Proto = 50, 'ESP', toString(Proto)) AS Protocol,\n       DstPort AS Port, uniqExact(SrcNetName) AS UEs, sum(Bytes) AS Bytes, count() AS Flows\nFROM flows\nWHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND (FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote}))\nGROUP BY Destination, Protocol, Port ORDER BY Bytes DESC LIMIT 100",
+          "format": 1,
+          "queryType": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Bytes"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "decbytes"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Bytes",
+            "desc": true
+          }
+        ]
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 12,
+        "h": 11
+      },
+      "id": 10
+    },
+    {
+      "type": "bargauge",
+      "title": "Traffic by service",
+      "description": "UE -> destination traffic by protocol/destination port.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "akvorado-ch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "akvorado-ch"
+          },
+          "editorType": "sql",
+          "rawSql": "SELECT concat(multiIf(Proto = 6, 'TCP', Proto = 17, 'UDP', Proto = 1, 'ICMP', Proto = 50, 'ESP', toString(Proto)), if(DstPort > 0, concat('/', toString(DstPort)), '')) AS service,\n       sum(Bytes) AS bytes\nFROM flows\nWHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND (FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote}))\nGROUP BY service ORDER BY bytes DESC LIMIT 12",
+          "format": 1,
+          "queryType": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "decbytes",
+          "min": 0,
+          "color": {
+            "mode": "continuous-BlPu"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        }
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 19,
+        "w": 6,
+        "h": 11
+      },
+      "id": 11
+    },
+    {
+      "type": "table",
+      "title": "Who sends traffic to UEs",
+      "description": "Source -> UE LAN / loopback, decrypted (pollers, servers, ...).",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "akvorado-ch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "akvorado-ch"
+          },
+          "editorType": "sql",
+          "rawSql": "SELECT replaceOne(IPv6NumToString(SrcAddr), '::ffff:', '') AS Source, any(SrcNetName) AS Label, multiIf(Proto = 6, 'TCP', Proto = 17, 'UDP', Proto = 1, 'ICMP', Proto = 50, 'ESP', toString(Proto)) AS Protocol,\n       SrcPort AS Port, uniqExact(DstNetName) AS UEs, sum(Bytes) AS Bytes\nFROM flows\nWHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND (FlowDirection = 'ingress' AND DstNetRole IN ('ue-lan', 'ue-loopback')) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote}))\nGROUP BY Source, Protocol, Port ORDER BY Bytes DESC LIMIT 100",
+          "format": 1,
+          "queryType": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Bytes"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "decbytes"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Bytes",
+            "desc": true
+          }
+        ]
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 19,
+        "w": 6,
+        "h": 11
+      },
+      "id": 12
+    },
+    {
+      "type": "row",
+      "title": "Internet and public DNS",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 24,
+        "h": 1
+      },
+      "id": 13
+    },
+    {
+      "type": "table",
+      "title": "Machines reaching public addresses",
+      "description": "UE LAN -> any address outside 10/8, 172.16/12, 192.168/16, 100.64/10 and multicast.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "akvorado-ch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "akvorado-ch"
+          },
+          "editorType": "sql",
+          "rawSql": "SELECT if(SrcNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), SrcNetName, replaceOne(IPv6NumToString(SrcAddr), '::ffff:', '')) AS UE, any(SrcNetTenant) AS Machine, replaceOne(IPv6NumToString(DstAddr), '::ffff:', '') AS Destination,\n       multiIf(Proto = 6, 'TCP', Proto = 17, 'UDP', Proto = 1, 'ICMP', Proto = 50, 'ESP', toString(Proto)) AS Protocol, DstPort AS Port, sum(Bytes) AS Bytes, count() AS Flows,\n       max(TimeReceived) AS `Last seen`\nFROM flows\nWHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND (FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) AND (NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '10.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '172.16.0.0/12') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '192.168.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '100.64.0.0/10') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '127.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '169.254.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '224.0.0.0/4')) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote}))\nGROUP BY UE, Destination, Protocol, Port ORDER BY Bytes DESC LIMIT 200",
+          "format": 1,
+          "queryType": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Bytes"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "decbytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Last seen"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocal"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Bytes",
+            "desc": true
+          }
+        ]
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 31,
+        "w": 14,
+        "h": 11
+      },
+      "id": 14
+    },
+    {
+      "type": "timeseries",
+      "title": "Internet traffic by machine",
+      "description": "UE -> public address traffic per machine.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "akvorado-ch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "akvorado-ch"
+          },
+          "editorType": "sql",
+          "rawSql": "SELECT $__timeInterval(TimeReceived) AS time,\n       if(SrcNetTenant != '', SrcNetTenant, if(SrcNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), SrcNetName, replaceOne(IPv6NumToString(SrcAddr), '::ffff:', ''))) AS machine, sum(Bytes) * 8 / $__interval_s AS bps\nFROM flows\nWHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND (FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) AND (NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '10.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '172.16.0.0/12') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '192.168.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '100.64.0.0/10') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '127.0.0.0/8') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '169.254.0.0/16') AND NOT isIPAddressInRange(replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''), '224.0.0.0/4')) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote}))\nGROUP BY time, machine ORDER BY time",
+          "format": 0,
+          "queryType": "timeseries"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 30,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "sortBy": "Mean",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 31,
+        "w": 10,
+        "h": 11
+      },
+      "id": 15
+    },
+    {
+      "type": "row",
+      "title": "Tunnel health (TAG headends)",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 42,
+        "w": 24,
+        "h": 1
+      },
+      "id": 16
+    },
+    {
+      "type": "table",
+      "title": "Tunnels per UE",
+      "description": "Tunnel = encrypted ESP/IKE from the UE's cellular address to each TAG (standby still sees keepalives). Data = decrypted traffic through that TAG. UEs not on OC4, or with no data, are listed first.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "akvorado-ch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "akvorado-ch"
+          },
+          "editorType": "sql",
+          "rawSql": "SELECT if((FlowDirection = 'ingress' AND SrcNetRole = 'ue-cellular' AND DstNetRole = 'vpn-headend') OR FlowDirection = 'egress', if(SrcNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), SrcNetName, replaceOne(IPv6NumToString(SrcAddr), '::ffff:', '')), if(DstNetName NOT IN ('', 'ue-lan', 'ue-loopback', 'ue-cellular'), DstNetName, replaceOne(IPv6NumToString(DstAddr), '::ffff:', ''))) AS UE,\n       any(if((FlowDirection = 'ingress' AND SrcNetRole = 'ue-cellular' AND DstNetRole = 'vpn-headend') OR FlowDirection = 'egress', SrcNetTenant, DstNetTenant)) AS Machine,\n       sumIf(Bytes, (FlowDirection = 'ingress' AND SrcNetRole = 'ue-cellular' AND DstNetRole = 'vpn-headend') AND ExporterSite = 'oc4') AS `Tunnel OC4`, sumIf(Bytes, ((FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) OR (FlowDirection = 'ingress' AND DstNetRole IN ('ue-lan', 'ue-loopback'))) AND ExporterSite = 'oc4') AS `Data OC4`, sumIf(Bytes, (FlowDirection = 'ingress' AND SrcNetRole = 'ue-cellular' AND DstNetRole = 'vpn-headend') AND ExporterSite = 'oc3') AS `Tunnel OC3`, sumIf(Bytes, ((FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) OR (FlowDirection = 'ingress' AND DstNetRole IN ('ue-lan', 'ue-loopback'))) AND ExporterSite = 'oc3') AS `Data OC3`,\n       multiIf(`Data OC3` > `Data OC4`, 'OC3 (standby)', `Data OC4` > 0, 'OC4',\n               `Tunnel OC4` > `Tunnel OC3`, 'OC4 (no data)', 'OC3 (no data)') AS `Carried by`,\n       maxIf(TimeReceived, (FlowDirection = 'ingress' AND SrcNetRole = 'ue-cellular' AND DstNetRole = 'vpn-headend')) AS `Last tunnel packet`\nFROM flows\nWHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND ((FlowDirection = 'ingress' AND SrcNetRole = 'ue-cellular' AND DstNetRole = 'vpn-headend') OR ((FlowDirection = 'egress' AND SrcNetRole IN ('ue-lan', 'ue-loopback')) OR (FlowDirection = 'ingress' AND DstNetRole IN ('ue-lan', 'ue-loopback')))) AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote}))\nGROUP BY UE HAVING UE != ''\nORDER BY (`Carried by` != 'OC4') DESC, `Data OC4` + `Data OC3` ASC LIMIT 200",
+          "format": 1,
+          "queryType": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Tunnel OC4"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "decbytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Data OC4"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "decbytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Tunnel OC3"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "decbytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Data OC3"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "decbytes"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Last tunnel packet"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocal"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": []
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 43,
+        "w": 14,
+        "h": 12
+      },
+      "id": 17
+    },
+    {
+      "type": "timeseries",
+      "title": "Encrypted tunnel traffic by TAG",
+      "description": "ESP/IKE from UEs to each TAG. A shift from OC4 to OC3 = UEs failing over.",
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "akvorado-ch"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "akvorado-ch"
+          },
+          "editorType": "sql",
+          "rawSql": "SELECT $__timeInterval(TimeReceived) AS time, upper(ExporterSite) AS tag, sum(Bytes) * 8 / $__interval_s AS bps\nFROM flows\nWHERE $__timeFilter(TimeReceived) AND ExporterName LIKE '%-TAG%' AND (FlowDirection = 'ingress' AND SrcNetRole = 'ue-cellular' AND DstNetRole = 'vpn-headend') AND ('__all' IN (${machine:singlequote}) OR if(FlowDirection = 'egress', SrcNetTenant, DstNetTenant) IN (${machine:singlequote}))\nGROUP BY time, tag ORDER BY time",
+          "format": 0,
+          "queryType": "timeseries"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "sortBy": "Mean",
+          "sortDesc": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 43,
+        "w": 10,
+        "h": 12
+      },
+      "id": 18
+    }
+  ]
+}

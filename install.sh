@@ -12,7 +12,8 @@
 #   5. Docker firewall: NetFlow udp/2055 only from allowed exporters (Docker bypasses ufw)
 #   6. nginx HTTPS site on :9444 -> console (fleet-monitor sign-in); ufw allow 9444 from admin subnets;
 #      nginx :8090 UE names for Akvorado (Docker subnet only)
-#   7. docker compose up
+#   7. Grafana fleet traffic dashboard files + admin password; nginx :9445; ufw allow 9445
+#   8. docker compose up
 #
 set -euo pipefail
 
@@ -24,6 +25,7 @@ LV_SIZE_G=100
 AKVORADO_VERSION=2026.10.1
 BUNDLE_URL=https://github.com/akvorado/akvorado/releases/download/v${AKVORADO_VERSION}/docker-compose-quickstart.tar.gz
 CELLWATCH_ENV=/opt/fleet-monitor/cellwatch/cellwatch.env
+OWNER=yancoal                     # owns grafana-admin-password.txt (break-glass)
 ADMIN_SOURCES=(10.228.224.0/24 10.228.20.28 10.228.8.0/23)   # same as Graylog :9443
 
 [[ $EUID -eq 0 ]] || { echo "run with sudo"; exit 1; }
@@ -75,6 +77,14 @@ install -m 644 "$SRC/docker-compose-local.yml" "$DEST/docker/docker-compose-loca
 install -m 644 "$SRC/env" "$DEST/.env"
 mkdir -p "$DEST/config"
 install -m 644 "$SRC"/config/{akvorado,inlet,outlet,console}.yaml "$DEST/config/"
+# Grafana (grafana-flows): provisioning, dashboards, read-only ClickHouse user. Git is the source.
+# Copied over the existing files (not delete + recreate): the running containers bind-mount these
+# paths and would keep seeing the deleted ones. A dashboard removed from git must be deleted here by hand.
+mkdir -p "$DEST/grafana/provisioning" "$DEST/grafana/dashboards"
+cp -r "$SRC/grafana/provisioning/." "$DEST/grafana/provisioning/"
+cp -r "$SRC/grafana/dashboards/." "$DEST/grafana/dashboards/"
+cp "$SRC/grafana/clickhouse-user.xml" "$DEST/grafana/clickhouse-user.xml"
+chmod -R u=rwX,go=rX "$DEST/grafana"
 mkdir -p "$DEST/data/clickhouse"
 chown 101:101 "$DEST/data/clickhouse"   # clickhouse image user
 
@@ -147,15 +157,27 @@ for s in "${ADMIN_SOURCES[@]}"; do ufw allow from "$s" to any port 9444 proto tc
 # Akvorado outlet container -> nginx :8090 (UE names from fleet-monitor). Docker subnet from upstream compose.
 ufw allow from 247.16.14.0/24 to any port 8090 proto tcp comment 'akvorado -> fleet-monitor UE names'
 
-step "7. Start Akvorado"
+step "7. Grafana admin password + :9445"
+if [[ ! -s $DEST/grafana-admin-password.txt ]]; then
+  python3 -c 'import secrets,string;a=string.ascii_letters+string.digits;print("".join(secrets.choice(a) for _ in range(24)))' > $DEST/grafana-admin-password.txt
+  echo "generated Grafana admin password -> $DEST/grafana-admin-password.txt"
+fi
+chown $OWNER:472 $DEST/grafana-admin-password.txt; chmod 640 $DEST/grafana-admin-password.txt   # 472 = grafana image user
+for s in "${ADMIN_SOURCES[@]}"; do ufw allow from "$s" to any port 9445 proto tcp comment 'akvorado grafana'; done
+
+step "8. Start Akvorado"
 cd "$DEST"
 docker compose config -q
 docker compose pull -q
 docker compose up -d --wait --wait-timeout 300
+# Config files are read by the orchestrator at start and handed to the other services:
+# restart them so a changed config/*.yaml takes effect (Kafka buffers flows meanwhile).
+docker compose restart akvorado-orchestrator akvorado-outlet akvorado-console
 docker compose ps
 
 echo
 echo "Akvorado is up:  https://10.231.137.100:9444/   (fleet-monitor sign-in)"
+echo "Dashboard:       https://10.231.137.100:9445/   (fleet-monitor sign-in)"
 echo "NetFlow in:      udp/2055 on 10.231.137.100, allowed from: $(grep ^ALLOWED /usr/local/sbin/akvorado-docker-firewall.sh)"
 iptables -S AKVORADO-FLOW
-ufw status | grep -E '9444|8090|Status' || true
+ufw status | grep -E '9444|9445|8090|Status' || true
