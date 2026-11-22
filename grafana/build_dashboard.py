@@ -303,6 +303,11 @@ dashboard = {
     "time": {"from": "now-6h", "to": "now"},
     "schemaVersion": 39,
     "description": "NetFlow from the TAG IPsec headends via Akvorado (raw flows, 7-day retention).",
+    "links": [
+        {"type": "link", "title": "Fleet syslog", "url": "/d/fleet-syslog", "icon": "dashboard", "keepTime": True},
+        {"type": "link", "title": "Akvorado console", "url": "https://10.231.137.100:9444/", "icon": "external link",
+         "targetBlank": True},
+    ],
     "templating": {"list": [{
         "name": "machine", "label": "Machine", "type": "query", "datasource": DS,
         "query": ("SELECT DISTINCT SrcNetTenant FROM flows WHERE TimeReceived > now() - INTERVAL 1 DAY "

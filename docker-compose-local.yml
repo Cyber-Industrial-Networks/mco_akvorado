@@ -50,16 +50,17 @@ services:
     ports:
       - "127.0.0.1:3001:3000/tcp"
     environment:
-      GF_PLUGINS_PREINSTALL_SYNC: grafana-clickhouse-datasource@4.23.4
+      GF_PLUGINS_PREINSTALL_SYNC: grafana-clickhouse-datasource@4.23.4,grafana-opensearch-datasource@2.34.6
       GF_SERVER_ROOT_URL: https://10.231.137.100:9445/
       GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana-admin-password
       # Sign-in: trust Remote-User only from nginx, which reaches the container through
-      # docker-proxy, i.e. from this network's gateway.
+      # docker-proxy, i.e. from a network gateway: akvorado's, or graylog's (172.18.0.1)
+      # since the container is on both. Same gateway Graylog trusts (GRAYLOG_TRUSTED_PROXIES).
       GF_AUTH_PROXY_ENABLED: "true"
       GF_AUTH_PROXY_HEADER_NAME: Remote-User
       GF_AUTH_PROXY_HEADER_PROPERTY: username
       GF_AUTH_PROXY_AUTO_SIGN_UP: "true"
-      GF_AUTH_PROXY_WHITELIST: 247.16.14.1
+      GF_AUTH_PROXY_WHITELIST: 247.16.14.1, 172.18.0.1
       GF_AUTH_SIGNOUT_REDIRECT_URL: /api/auth/logout
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_USERS_AUTO_ASSIGN_ORG_ROLE: Viewer
@@ -74,6 +75,15 @@ services:
       - ../grafana/provisioning:/etc/grafana/provisioning:ro
       - ../grafana/dashboards:/var/lib/grafana/dashboards:ro
       - /srv/akvorado/grafana-admin-password.txt:/run/secrets/grafana-admin-password:ro
+    networks:
+      - default
+      # Graylog's network, to read its OpenSearch (fleet syslog dashboard).
+      - graylog
+
+networks:
+  graylog:
+    external: true
+    name: graylog_graylog   # created by the Graylog stack (/srv/graylog)
 
 volumes:
   akvorado-grafana-flows:

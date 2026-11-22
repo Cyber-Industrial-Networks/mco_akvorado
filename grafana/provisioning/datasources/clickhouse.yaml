@@ -11,3 +11,19 @@ datasources:
       protocol: native
       username: grafana
       defaultDatabase: default
+  # Graylog's OpenSearch (fleet syslog), read over the graylog_graylog Docker network.
+  # OpenSearch runs without its security plugin, so there is no login; access to Grafana
+  # itself is gated by the :9445 sign-in.
+  - name: Graylog OpenSearch
+    uid: graylog-os
+    type: grafana-opensearch-datasource
+    url: http://opensearch:9200
+    editable: false
+    jsonData:
+      database: "graylog_*"
+      timeField: timestamp
+      flavor: opensearch
+      version: "2.19.6"
+      maxConcurrentShardRequests: 5
+      logMessageField: message
+      logLevelField: severity_name
