@@ -1,0 +1,13 @@
+---
+http:
+  cache:
+    type: redis
+    server: redis:6379
+database:
+  saved-filters:
+    - description: "From UE LANs"
+      content: >-
+        SrcNetRole = "ue-lan"
+    - description: "To UE LANs"
+      content: >-
+        DstNetRole = "ue-lan"

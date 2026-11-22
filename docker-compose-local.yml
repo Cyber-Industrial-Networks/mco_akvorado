@@ -1,0 +1,45 @@
+# fleet-mon overrides on top of Akvorado's upstream docker/docker-compose.yml.
+# Installed to /srv/akvorado/docker/docker-compose-local.yml by install.sh.
+services:
+  akvorado-inlet:
+    # NetFlow only, on the mgmt address only (exporters are the core switches).
+    # Docker bypasses ufw: akvorado-docker-firewall.service restricts sources.
+    ports: !override
+      - "10.231.137.100:2055:2055/udp"
+
+  akvorado-outlet:
+    # BMP (10179/tcp) not used.
+    ports: !reset []
+
+  akvorado-console:
+    labels:
+      # nginx on :9444 signs users in (fleet-monitor/ISE) and sets Remote-User.
+      # Drop upstream's middleware that hard-codes a demo user.
+      - traefik.http.routers.akvorado-console.middlewares=
+
+  kafka-ui:
+    labels:
+      - traefik.http.routers.kafka-ui.entrypoints=private
+
+  traefik:
+    labels:
+      - traefik.http.routers.traefik.entrypoints=private
+    ports: !override
+      # Private entrypoint (ClickHouse, Kafka UI, orchestrator, ...): localhost only.
+      # Moved from 8080 because nginx already listens on *:8080 (collector package).
+      - "127.0.0.1:8082:8080/tcp"
+      # Public entrypoint (console): localhost only, reached through nginx :9444.
+      - "127.0.0.1:8081:8081/tcp"
+
+  clickhouse:
+    # Shares the box with Graylog/OpenSearch; ClickHouse sizes itself to the cgroup limit.
+    mem_limit: 6g
+
+volumes:
+  # Flow data on the dedicated LV rather than /var/lib/docker on the root LV.
+  akvorado-clickhouse:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /srv/akvorado/data/clickhouse
