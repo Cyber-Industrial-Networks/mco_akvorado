@@ -271,18 +271,21 @@ dashboard = {
         "query": ("SELECT DISTINCT SrcNetTenant FROM flows WHERE TimeReceived > now() - INTERVAL 1 DAY "
                   "AND SrcNetRole IN ('ue-lan', 'ue-loopback') AND SrcNetTenant != '' ORDER BY 1"),
         "definition": "machines seen in the last day",
-        "refresh": 2, "multi": True, "includeAll": True, "allValue": "__all",
+        # Grafana inserts a custom All value verbatim (no :singlequote formatting), so it
+        # carries its own quotes; selected machines are single-quoted by the format.
+        "refresh": 2, "multi": True, "includeAll": True, "allValue": "'__all'",
         "current": {"selected": True, "text": ["All"], "value": ["$__all"]}, "sort": 1}]},
     "panels": panels,
 }
 
 
 # ------------------------------------------------------------------ test mode
+ALL_AS_SENT = dashboard["templating"]["list"][0]["allValue"]  # what Grafana sends when Machine = All
 def expand(sql, start="now() - INTERVAL 1 HOUR", step=60):
     return (sql.replace("$__timeFilter(TimeReceived)", f"TimeReceived >= {start}")
                .replace("$__timeInterval(TimeReceived)", f"toStartOfInterval(TimeReceived, INTERVAL {step} second)")
                .replace("$__interval_s", str(step))
-               .replace("${machine:singlequote}", "'__all'"))
+               .replace("${machine:singlequote}", ALL_AS_SENT))
 
 
 def test(url):
