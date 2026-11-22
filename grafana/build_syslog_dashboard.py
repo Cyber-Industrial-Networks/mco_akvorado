@@ -73,7 +73,7 @@ def stat(title, target, calc, desc, colour="red"):
     return {"type": "stat", "title": title, "description": desc, "datasource": DS, "targets": [target],
             "fieldConfig": {"defaults": {"unit": "none", "color": {"mode": "fixed", "fixedColor": colour}},
                             "overrides": []},
-            "options": {"reduceOptions": {"calcs": [calc], "fields": "/^Count$/", "values": False},
+            "options": {"reduceOptions": {"calcs": [calc], "fields": "", "values": False},
                         "colorMode": "value", "graphMode": "none", "textMode": "value"}}
 
 
