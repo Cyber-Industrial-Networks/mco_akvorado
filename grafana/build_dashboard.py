@@ -330,6 +330,7 @@ dashboard = {
     "description": "NetFlow from the TAG IPsec headends via Akvorado (raw flows, 7-day retention).",
     "links": [
         {"type": "link", "title": "Fleet syslog", "url": "/d/fleet-syslog", "icon": "dashboard", "keepTime": True},
+        {"type": "link", "title": "Fleet events", "url": "/d/fleet-events", "icon": "dashboard", "keepTime": True},
         {"type": "link", "title": "Akvorado console", "url": "https://10.231.137.100:9444/", "icon": "external link",
          "targetBlank": True},
     ],

@@ -266,6 +266,7 @@ dashboard = {
     "links": [
         {"type": "link", "title": "Fleet UE traffic", "url": "/d/fleet-traffic", "icon": "dashboard",
          "keepTime": True},
+        {"type": "link", "title": "Fleet events", "url": "/d/fleet-events", "icon": "dashboard", "keepTime": True},
         {"type": "link", "title": "Graylog", "url": GRAYLOG + "/", "icon": "external link", "targetBlank": True},
     ],
     "templating": {"list": [{

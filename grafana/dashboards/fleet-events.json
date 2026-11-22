@@ -1,0 +1,2613 @@
+{
+  "uid": "fleet-events",
+  "title": "Fleet events",
+  "tags": [
+    "graylog",
+    "fleet"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "5m",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "schemaVersion": 39,
+  "description": "Lower-priority syslog (severity 4-7) by theme: stability, machine power, changes, hardware, hygiene.",
+  "links": [
+    {
+      "type": "link",
+      "title": "Fleet syslog",
+      "url": "/d/fleet-syslog",
+      "icon": "dashboard",
+      "keepTime": true
+    },
+    {
+      "type": "link",
+      "title": "Fleet UE traffic",
+      "url": "/d/fleet-traffic",
+      "icon": "dashboard",
+      "keepTime": true
+    },
+    {
+      "type": "link",
+      "title": "Graylog",
+      "url": "https://10.231.137.100:9443/",
+      "icon": "external link",
+      "targetBlank": true
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "noise",
+        "label": "Session chatter",
+        "type": "custom",
+        "query": "Hidden : (\"SSH-5-SSH_CLOSE\" OR \"SSH-5-SSH2_SESSION\" OR \"SSH-5-SSH2_CLOSE\" OR \"SSH-5-SSH2_USERAUTH\" OR \"SYS-6-LOGOUT\"),Shown : (\"NONE\")",
+        "options": [],
+        "multi": false,
+        "includeAll": false,
+        "current": {
+          "selected": true,
+          "text": "Hidden",
+          "value": "(\"SSH-5-SSH_CLOSE\" OR \"SSH-5-SSH2_SESSION\" OR \"SSH-5-SSH2_CLOSE\" OR \"SSH-5-SSH2_USERAUTH\" OR \"SYS-6-LOGOUT\")"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Overview",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "id": 1
+    },
+    {
+      "type": "stat",
+      "title": "Link / routing changes",
+      "description": "Interface up/down, BGP / PIM / EIGRP neighbour changes.",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-os"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "severity:>=4 AND cisco_event:(\"LINEPROTO-5-UPDOWN\" OR \"LINK-5-UPDOWN\" OR \"LINK-5-CHANGED\" OR \"BGP-5-ADJCHANGE\" OR \"BGP_SESSION-5-ADJCHANGE\" OR \"PIM-5-NBRCHG\" OR \"PIM-5-DRCHG\" OR \"DUAL-5-NBRCHANGE\")",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "9",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 1000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 5,
+        "h": 5
+      },
+      "id": 2
+    },
+    {
+      "type": "stat",
+      "title": "UEs with under-voltage",
+      "description": "UEs reporting ignition / supply under-voltage (machine battery, wiring, cranking).",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-os"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "cisco_event:(IGNITION-4-*) AND source:yau-mco-flt-ue*",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "terms",
+              "field": "source",
+              "settings": {
+                "size": "500",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "count"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "gridPos": {
+        "x": 5,
+        "y": 1,
+        "w": 5,
+        "h": 5
+      },
+      "id": 3
+    },
+    {
+      "type": "stat",
+      "title": "Config changes",
+      "description": "Configuration changes, manual (CONFIG_I) and automated (CONFIG_P).",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-os"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "cisco_event:(\"SYS-5-CONFIG_I\" OR \"SYS-5-CONFIG_P\")",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "9",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "gridPos": {
+        "x": 10,
+        "y": 1,
+        "w": 5,
+        "h": 5
+      },
+      "id": 4
+    },
+    {
+      "type": "stat",
+      "title": "Hardware events",
+      "description": "Module insertion / removal / offline (OIR).",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-os"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "cisco_event:(SPA_OIR-* OR OIR-* OR IOSXE_OIR-*)",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "9",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "purple",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "gridPos": {
+        "x": 15,
+        "y": 1,
+        "w": 5,
+        "h": 5
+      },
+      "id": 5
+    },
+    {
+      "type": "stat",
+      "title": "Devices to tidy up",
+      "description": "Devices logging hygiene events (native VLAN mismatch, leftover Plug-and-Play, ...).",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-os"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "cisco_event:(\"CDP-4-NATIVE_VLAN_MISMATCH\" OR PNP-6-* OR DMI-5-SYNC_* OR NDBMAN-5-* OR PKI-6-*)",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "terms",
+              "field": "source",
+              "settings": {
+                "size": "500",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "count"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "wideLayout": true
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 1,
+        "w": 4,
+        "h": 5
+      },
+      "id": 6
+    },
+    {
+      "type": "timeseries",
+      "title": "Lower-severity events by theme",
+      "description": "Severity 4-7 messages per 15 minutes, by theme. 'Other' excludes SSH session chatter unless 'Session chatter' is set to Show.",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-os"
+      },
+      "interval": "15m",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "severity:>=4 AND cisco_event:(\"LINEPROTO-5-UPDOWN\" OR \"LINK-5-UPDOWN\" OR \"LINK-5-CHANGED\" OR \"BGP-5-ADJCHANGE\" OR \"BGP_SESSION-5-ADJCHANGE\" OR \"PIM-5-NBRCHG\" OR \"PIM-5-DRCHG\" OR \"DUAL-5-NBRCHANGE\")",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "9",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ],
+          "alias": "Stability"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "severity:>=4 AND cisco_event:(IGNITION-4-*)",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "9",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ],
+          "alias": "Machine power"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "severity:>=4 AND cisco_event:(\"SYS-5-CONFIG_I\" OR \"SYS-5-CONFIG_P\" OR \"SEC_LOGIN-5-LOGIN_SUCCESS\" OR \"SEC_LOGIN-4-LOGIN_FAILED\" OR \"DMI-5-AUTH_PASSED\" OR \"SYS-6-PRIVCFG_ENCRYPT_SUCCESS\")",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "9",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ],
+          "alias": "Changes and access"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "severity:>=4 AND cisco_event:(SPA_OIR-* OR OIR-* OR IOSXE_OIR-*)",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "9",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ],
+          "alias": "Hardware"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "severity:>=4 AND cisco_event:(\"CDP-4-NATIVE_VLAN_MISMATCH\" OR PNP-6-* OR DMI-5-SYNC_* OR NDBMAN-5-* OR PKI-6-*)",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "9",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ],
+          "alias": "Hygiene"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "severity:>=4 AND NOT (cisco_event:(\"LINEPROTO-5-UPDOWN\" OR \"LINK-5-UPDOWN\" OR \"LINK-5-CHANGED\" OR \"BGP-5-ADJCHANGE\" OR \"BGP_SESSION-5-ADJCHANGE\" OR \"PIM-5-NBRCHG\" OR \"PIM-5-DRCHG\" OR \"DUAL-5-NBRCHANGE\") OR cisco_event:(IGNITION-4-*) OR cisco_event:(\"SYS-5-CONFIG_I\" OR \"SYS-5-CONFIG_P\" OR \"SEC_LOGIN-5-LOGIN_SUCCESS\" OR \"SEC_LOGIN-4-LOGIN_FAILED\" OR \"DMI-5-AUTH_PASSED\" OR \"SYS-6-PRIVCFG_ENCRYPT_SUCCESS\") OR cisco_event:(SPA_OIR-* OR OIR-* OR IOSXE_OIR-*) OR cisco_event:(\"CDP-4-NATIVE_VLAN_MISMATCH\" OR PNP-6-* OR DMI-5-SYNC_* OR NDBMAN-5-* OR PKI-6-*)) AND NOT cisco_event:${noise}",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "9",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ],
+          "alias": "Other"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 85,
+            "gradientMode": "hue",
+            "lineWidth": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "showPoints": "never",
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Stability"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Machine power"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Changes and access"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Hardware"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Hygiene"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Other"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 8
+      },
+      "id": 7
+    },
+    {
+      "type": "row",
+      "title": "Link and routing stability",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 1
+      },
+      "id": 8
+    },
+    {
+      "type": "status-history",
+      "title": "Flaps by UE (per 15 min)",
+      "description": "The 30 UEs with the most link / neighbour changes. Darker = more changes in that 15 minutes. A vertical band = many UEs at once (shared cause); a streak = one unstable UE.",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-os"
+      },
+      "interval": "15m",
+      "maxDataPoints": 200,
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "cisco_event:(\"LINEPROTO-5-UPDOWN\" OR \"LINK-5-UPDOWN\" OR \"LINK-5-CHANGED\" OR \"BGP-5-ADJCHANGE\" OR \"BGP_SESSION-5-ADJCHANGE\" OR \"PIM-5-NBRCHG\" OR \"PIM-5-DRCHG\" OR \"DUAL-5-NBRCHANGE\") AND source:yau-mco-flt-ue*",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "terms",
+              "field": "source",
+              "settings": {
+                "size": "30",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "id": "9",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^yau-mco-flt-ue(\\d+)$",
+            "renamePattern": "UE$1"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 20
+              }
+            ]
+          },
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showValue": "never",
+        "rowHeight": 0.85,
+        "colWidth": 0.95,
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 14,
+        "h": 14
+      },
+      "id": 9
+    },
+    {
+      "type": "table",
+      "title": "Most unstable devices",
+      "description": "Link / neighbour change counts per device and event. Click a device to open it in Graylog.",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-os"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "cisco_event:(\"LINEPROTO-5-UPDOWN\" OR \"LINK-5-UPDOWN\" OR \"LINK-5-CHANGED\" OR \"BGP-5-ADJCHANGE\" OR \"BGP_SESSION-5-ADJCHANGE\" OR \"PIM-5-NBRCHG\" OR \"PIM-5-DRCHG\" OR \"DUAL-5-NBRCHANGE\")",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "terms",
+              "field": "source",
+              "settings": {
+                "size": "200",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "id": "3",
+              "type": "terms",
+              "field": "cisco_event",
+              "settings": {
+                "size": "12",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "cisco_event",
+            "rowField": "source",
+            "valueField": "Count",
+            "emptyValue": "zero"
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "reducer": "sum"
+            },
+            "alias": "Total",
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Total",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "regex",
+              "options": {
+                "pattern": "^yau-mco-flt-ue(\\d+)$",
+                "result": {
+                  "text": "UE$1"
+                }
+              }
+            },
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "\u00b7"
+                }
+              }
+            }
+          ],
+          "custom": {
+            "filterable": true,
+            "align": "center"
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "rgba(255,152,48,0.35)",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "string"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Device"
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open in Graylog",
+                    "targetBlank": true,
+                    "url": "https://10.231.137.100:9443/search?q=source%3A${__value.raw}%20AND%20cisco_event%3A%28%22LINEPROTO-5-UPDOWN%22%20OR%20%22LINK-5-UPDOWN%22%20OR%20%22LINK-5-CHANGED%22%20OR%20%22BGP-5-ADJCHANGE%22%20OR%20%22BGP_SESSION-5-ADJCHANGE%22%20OR%20%22PIM-5-NBRCHG%22%20OR%20%22PIM-5-DRCHG%22%20OR%20%22DUAL-5-NBRCHANGE%22%29&rangetype=absolute&from=${__from:date:iso}&to=${__to:date:iso}"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "number"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-YlRd"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 15,
+        "w": 10,
+        "h": 14
+      },
+      "id": 10
+    },
+    {
+      "type": "row",
+      "title": "Machine power",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 29,
+        "w": 24,
+        "h": 1
+      },
+      "id": 11
+    },
+    {
+      "type": "timeseries",
+      "title": "Under-voltage events over time",
+      "description": "Under-voltage starts per UE per hour (top 15 UEs).",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-os"
+      },
+      "interval": "1h",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "cisco_event:\"IGNITION-4-IGN_UNDER_VOLTAGE\" AND source:yau-mco-flt-ue*",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "terms",
+              "field": "source",
+              "settings": {
+                "size": "15",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "id": "9",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 85,
+            "gradientMode": "hue",
+            "lineWidth": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "showPoints": "never",
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^yau-mco-flt-ue(\\d+)$",
+            "renamePattern": "UE$1"
+          }
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 14,
+        "h": 10
+      },
+      "id": 12
+    },
+    {
+      "type": "table",
+      "title": "Under-voltage by machine",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "description": "Under-voltage starts per UE, with its machine (from the fleet-monitor register via Akvorado). Repeated events on one machine suggest a battery / alternator / wiring issue.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "cisco_event:\"IGNITION-4-IGN_UNDER_VOLTAGE\"",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            },
+            {
+              "id": "5",
+              "type": "max",
+              "field": "timestamp"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "terms",
+              "field": "source",
+              "settings": {
+                "size": "200",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "akvorado-ch"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT lower(concat('yau-mco-flt-', n)) AS source, anyIf(t, t != '') AS Machine\nFROM (SELECT SrcNetName AS n, SrcNetTenant AS t FROM flows\n      WHERE TimeReceived > now() - INTERVAL 1 DAY AND match(SrcNetName, '^UE[0-9]+$'))\nGROUP BY source"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "source",
+            "mode": "outerTabular"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "type": "include",
+            "match": "any",
+            "filters": [
+              {
+                "fieldName": "Count",
+                "config": {
+                  "id": "greater",
+                  "options": {
+                    "value": 0
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "source": 0,
+              "Machine": 1,
+              "Count": 2,
+              "Max": 3
+            },
+            "renameByName": {
+              "source": "UE",
+              "Count": "Under-voltage events",
+              "Max": "Last event"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Under-voltage events",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "regex",
+              "options": {
+                "pattern": "^yau-mco-flt-ue(\\d+)$",
+                "result": {
+                  "text": "UE$1"
+                }
+              }
+            }
+          ],
+          "custom": {
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Last event"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocal"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Under-voltage events"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-YlRd"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "UE"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open in Graylog",
+                    "targetBlank": true,
+                    "url": "https://10.231.137.100:9443/search?q=source%3A${__value.raw}%20AND%20cisco_event%3A%28IGNITION-4-%2A%29&rangetype=absolute&from=${__from:date:iso}&to=${__to:date:iso}"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 30,
+        "w": 10,
+        "h": 10
+      },
+      "id": 13
+    },
+    {
+      "type": "row",
+      "title": "Changes and access",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 24,
+        "h": 1
+      },
+      "id": 14
+    },
+    {
+      "type": "timeseries",
+      "title": "Changes and logins over time",
+      "description": "Configuration changes and logins per hour.",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-os"
+      },
+      "interval": "1h",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "cisco_event:\"SYS-5-CONFIG_I\"",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "9",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ],
+          "alias": "Config (manual)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "cisco_event:\"SYS-5-CONFIG_P\"",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "9",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ],
+          "alias": "Config (automated)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "cisco_event:(\"SEC_LOGIN-5-LOGIN_SUCCESS\" OR \"DMI-5-AUTH_PASSED\")",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "9",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ],
+          "alias": "Logins"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "cisco_event:\"SEC_LOGIN-4-LOGIN_FAILED\"",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "9",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ],
+          "alias": "Failed logins"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 85,
+            "gradientMode": "hue",
+            "lineWidth": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "showPoints": "never",
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Config (manual)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Config (automated)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Logins"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failed logins"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 41,
+        "w": 8,
+        "h": 12
+      },
+      "id": 15
+    },
+    {
+      "type": "table",
+      "title": "Change log",
+      "description": "Latest 300 configuration changes and logins. The message says who and from where (e.g. 'Configured from console by <user> on vty0 (<ip>)').",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-os"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "RawData",
+          "query": "cisco_event:(\"SYS-5-CONFIG_I\" OR \"SYS-5-CONFIG_P\" OR \"SEC_LOGIN-5-LOGIN_SUCCESS\" OR \"SEC_LOGIN-4-LOGIN_FAILED\" OR \"DMI-5-AUTH_PASSED\" OR \"SYS-6-PRIVCFG_ENCRYPT_SUCCESS\")",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "raw_data",
+              "settings": {
+                "size": "300"
+              }
+            }
+          ],
+          "bucketAggs": []
+        }
+      ],
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "timestamp",
+                "source",
+                "cisco_event",
+                "message"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "timestamp": 0,
+              "source": 1,
+              "cisco_event": 2,
+              "message": 3
+            },
+            "renameByName": {
+              "timestamp": "Time",
+              "source": "Device",
+              "cisco_event": "Event",
+              "message": "Message"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Time",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "regex",
+              "options": {
+                "pattern": "^yau-mco-flt-ue(\\d+)$",
+                "result": {
+                  "text": "UE$1"
+                }
+              }
+            }
+          ],
+          "custom": {
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Device"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Event"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 250
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "SYS-5-CONFIG_I": {
+                        "text": "Config change (manual)",
+                        "color": "blue",
+                        "index": 0
+                      },
+                      "SYS-5-CONFIG_P": {
+                        "text": "Config change (automated)",
+                        "color": "purple",
+                        "index": 1
+                      },
+                      "SEC_LOGIN-5-LOGIN_SUCCESS": {
+                        "text": "Login",
+                        "color": "green",
+                        "index": 2
+                      },
+                      "SEC_LOGIN-4-LOGIN_FAILED": {
+                        "text": "Login failed",
+                        "color": "red",
+                        "index": 3
+                      },
+                      "DMI-5-AUTH_PASSED": {
+                        "text": "NETCONF/API login",
+                        "color": "green",
+                        "index": 4
+                      },
+                      "SYS-6-PRIVCFG_ENCRYPT_SUCCESS": {
+                        "text": "Config saved (encrypted)",
+                        "color": "text",
+                        "index": 5
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 41,
+        "w": 16,
+        "h": 12
+      },
+      "id": 16
+    },
+    {
+      "type": "row",
+      "title": "Hardware",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 53,
+        "w": 24,
+        "h": 1
+      },
+      "id": 17
+    },
+    {
+      "type": "table",
+      "title": "Module events by device",
+      "description": "Module insertion / removal / offline events per device.",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-os"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "cisco_event:(SPA_OIR-* OR OIR-* OR IOSXE_OIR-*)",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "terms",
+              "field": "source",
+              "settings": {
+                "size": "200",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "id": "3",
+              "type": "terms",
+              "field": "cisco_event",
+              "settings": {
+                "size": "12",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "cisco_event",
+            "rowField": "source",
+            "valueField": "Count",
+            "emptyValue": "zero"
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "reducer": "sum"
+            },
+            "alias": "Total",
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Total",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "regex",
+              "options": {
+                "pattern": "^yau-mco-flt-ue(\\d+)$",
+                "result": {
+                  "text": "UE$1"
+                }
+              }
+            },
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "\u00b7"
+                }
+              }
+            }
+          ],
+          "custom": {
+            "filterable": true,
+            "align": "center"
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "rgba(255,152,48,0.35)",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "string"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Device"
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open in Graylog",
+                    "targetBlank": true,
+                    "url": "https://10.231.137.100:9443/search?q=source%3A${__value.raw}%20AND%20cisco_event%3A%28SPA_OIR-%2A%20OR%20OIR-%2A%20OR%20IOSXE_OIR-%2A%29&rangetype=absolute&from=${__from:date:iso}&to=${__to:date:iso}"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "number"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-YlRd"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 54,
+        "w": 10,
+        "h": 9
+      },
+      "id": 18
+    },
+    {
+      "type": "table",
+      "title": "Latest module events",
+      "description": "Most recent OIR messages (which module / slot).",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-os"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "RawData",
+          "query": "cisco_event:(SPA_OIR-* OR OIR-* OR IOSXE_OIR-*)",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "raw_data",
+              "settings": {
+                "size": "200"
+              }
+            }
+          ],
+          "bucketAggs": []
+        }
+      ],
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "timestamp",
+                "source",
+                "cisco_event",
+                "message"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "timestamp": 0,
+              "source": 1,
+              "cisco_event": 2,
+              "message": 3
+            },
+            "renameByName": {
+              "timestamp": "Time",
+              "source": "Device",
+              "cisco_event": "Event",
+              "message": "Message"
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Time",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "regex",
+              "options": {
+                "pattern": "^yau-mco-flt-ue(\\d+)$",
+                "result": {
+                  "text": "UE$1"
+                }
+              }
+            }
+          ],
+          "custom": {
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Device"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Event"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 250
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "gridPos": {
+        "x": 10,
+        "y": 54,
+        "w": 14,
+        "h": 9
+      },
+      "id": 19
+    },
+    {
+      "type": "row",
+      "title": "Hygiene and noise",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 63,
+        "w": 24,
+        "h": 1
+      },
+      "id": 20
+    },
+    {
+      "type": "table",
+      "title": "Top lower-severity events by volume",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-os"
+      },
+      "description": "All severity 4-7 events (including session chatter), with device counts. High volume from few devices = a config issue to fix or noise to filter in Graylog.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "severity:>=4",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            },
+            {
+              "id": "4",
+              "type": "cardinality",
+              "field": "source"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "terms",
+              "field": "cisco_event",
+              "settings": {
+                "size": "40",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "cisco_event": "Event",
+              "Count": "Messages",
+              "Unique Count": "Devices"
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Messages"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-GrYlRd"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Devices"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 64,
+        "w": 10,
+        "h": 12
+      },
+      "id": 21
+    },
+    {
+      "type": "table",
+      "title": "Devices to tidy up",
+      "description": "Native VLAN mismatches (fix the trunk config), leftover Plug-and-Play / Catalyst Center sync chatter (PnP agent still active after onboarding), certificate messages.",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-os"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "cisco_event:(\"CDP-4-NATIVE_VLAN_MISMATCH\" OR PNP-6-* OR DMI-5-SYNC_* OR NDBMAN-5-* OR PKI-6-*)",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "terms",
+              "field": "source",
+              "settings": {
+                "size": "200",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "id": "3",
+              "type": "terms",
+              "field": "cisco_event",
+              "settings": {
+                "size": "12",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "cisco_event",
+            "rowField": "source",
+            "valueField": "Count",
+            "emptyValue": "zero"
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "reducer": "sum"
+            },
+            "alias": "Total",
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Total",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "regex",
+              "options": {
+                "pattern": "^yau-mco-flt-ue(\\d+)$",
+                "result": {
+                  "text": "UE$1"
+                }
+              }
+            },
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "\u00b7"
+                }
+              }
+            }
+          ],
+          "custom": {
+            "filterable": true,
+            "align": "center"
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "rgba(255,152,48,0.35)",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "string"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Device"
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open in Graylog",
+                    "targetBlank": true,
+                    "url": "https://10.231.137.100:9443/search?q=source%3A${__value.raw}%20AND%20cisco_event%3A%28%22CDP-4-NATIVE_VLAN_MISMATCH%22%20OR%20PNP-6-%2A%20OR%20DMI-5-SYNC_%2A%20OR%20NDBMAN-5-%2A%20OR%20PKI-6-%2A%29&rangetype=absolute&from=${__from:date:iso}&to=${__to:date:iso}"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 150
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "number"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-YlRd"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "gridPos": {
+        "x": 10,
+        "y": 64,
+        "w": 14,
+        "h": 12
+      },
+      "id": 22
+    }
+  ]
+}

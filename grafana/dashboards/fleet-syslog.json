@@ -25,6 +25,13 @@
     },
     {
       "type": "link",
+      "title": "Fleet events",
+      "url": "/d/fleet-events",
+      "icon": "dashboard",
+      "keepTime": true
+    },
+    {
+      "type": "link",
       "title": "Graylog",
       "url": "https://10.231.137.100:9443/",
       "icon": "external link",
