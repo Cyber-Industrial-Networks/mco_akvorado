@@ -9,8 +9,9 @@ NetFlow collector + web console for the MCO TAG IPsec headends (UE traffic). Rep
   10.228.224.0/24, 10.228.20.28, 10.228.8.0/23 (ufw, same as Graylog :9443).
 - NetFlow in: **udp/2055 on 10.231.137.100**, NetFlow v9 or IPFIX, unsampled. Allowed exporters: `ALLOWED` in
   `akvorado-docker-firewall.sh` (OC4-TAG01 10.228.224.17 primary, OC3-TAG01 10.228.224.18 standby).
-- Install / update: copy this folder to `~/akvorado` on the server, then `sudo bash ~/akvorado/install.sh`
-  (idempotent). Akvorado version pinned in `install.sh` (`AKVORADO_VERSION`, currently 2026.10.1).
+- Install / update: `~/akvorado` on the server is a clone of this repo. Push from the Mac, then on the server
+  `cd ~/akvorado && git pull` and `sudo bash ~/akvorado/install.sh` (idempotent), or install just the changed file
+  (see the table) and restart that service. Akvorado version pinned in `install.sh` (`AKVORADO_VERSION`, currently 2026.10.1).
 
 | File | Goes to |
 |---|---|
