@@ -26,6 +26,10 @@ networks:
     10.231.128.13/32:
       name: oc3-tag01-lo88
       role: vpn-headend
+    # Servers UEs talk to (shown as DstNetName / SrcNetName, e.g. in the dashboard's Label column).
+    10.228.119.1/32:
+      name: guardvant
+      role: server
     10.228.224.0/24:
       name: core-mgmt
       role: infrastructure
