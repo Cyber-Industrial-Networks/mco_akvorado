@@ -73,7 +73,7 @@
     {
       "type": "stat",
       "title": "Link / routing changes",
-      "description": "Interface up/down, BGP / PIM / EIGRP neighbour changes.",
+      "description": "Interface up/down, BGP / PIM / EIGRP neighbour changes (TAG headends left out: UE tunnels coming and going there is normal).",
       "datasource": {
         "type": "grafana-opensearch-datasource",
         "uid": "graylog-os"
@@ -87,7 +87,7 @@
           },
           "queryType": "lucene",
           "luceneQueryType": "Metric",
-          "query": "severity:>=4 AND cisco_event:(\"LINEPROTO-5-UPDOWN\" OR \"LINK-5-UPDOWN\" OR \"LINK-5-CHANGED\" OR \"BGP-5-ADJCHANGE\" OR \"BGP_SESSION-5-ADJCHANGE\" OR \"PIM-5-NBRCHG\" OR \"PIM-5-DRCHG\" OR \"DUAL-5-NBRCHANGE\")",
+          "query": "severity:>=4 AND (cisco_event:(\"LINEPROTO-5-UPDOWN\" OR \"LINK-5-UPDOWN\" OR \"LINK-5-CHANGED\" OR \"BGP-5-ADJCHANGE\" OR \"BGP_SESSION-5-ADJCHANGE\" OR \"PIM-5-NBRCHG\" OR \"PIM-5-DRCHG\" OR \"DUAL-5-NBRCHANGE\")) AND NOT source:yau-mco-*-tag*",
           "timeField": "timestamp",
           "metrics": [
             {
@@ -514,7 +514,7 @@
           },
           "queryType": "lucene",
           "luceneQueryType": "Metric",
-          "query": "severity:>=4 AND cisco_event:(\"LINEPROTO-5-UPDOWN\" OR \"LINK-5-UPDOWN\" OR \"LINK-5-CHANGED\" OR \"BGP-5-ADJCHANGE\" OR \"BGP_SESSION-5-ADJCHANGE\" OR \"PIM-5-NBRCHG\" OR \"PIM-5-DRCHG\" OR \"DUAL-5-NBRCHANGE\")",
+          "query": "severity:>=4 AND (cisco_event:(\"LINEPROTO-5-UPDOWN\" OR \"LINK-5-UPDOWN\" OR \"LINK-5-CHANGED\" OR \"BGP-5-ADJCHANGE\" OR \"BGP_SESSION-5-ADJCHANGE\" OR \"PIM-5-NBRCHG\" OR \"PIM-5-DRCHG\" OR \"DUAL-5-NBRCHANGE\")) AND NOT source:yau-mco-*-tag*",
           "timeField": "timestamp",
           "metrics": [
             {
@@ -849,7 +849,7 @@
           },
           "queryType": "lucene",
           "luceneQueryType": "Metric",
-          "query": "cisco_event:(\"LINEPROTO-5-UPDOWN\" OR \"LINK-5-UPDOWN\" OR \"LINK-5-CHANGED\" OR \"BGP-5-ADJCHANGE\" OR \"BGP_SESSION-5-ADJCHANGE\" OR \"PIM-5-NBRCHG\" OR \"PIM-5-DRCHG\" OR \"DUAL-5-NBRCHANGE\") AND source:yau-mco-flt-ue*",
+          "query": "(cisco_event:(\"LINEPROTO-5-UPDOWN\" OR \"LINK-5-UPDOWN\" OR \"LINK-5-CHANGED\" OR \"BGP-5-ADJCHANGE\" OR \"BGP_SESSION-5-ADJCHANGE\" OR \"PIM-5-NBRCHG\" OR \"PIM-5-DRCHG\" OR \"DUAL-5-NBRCHANGE\")) AND NOT source:yau-mco-*-tag* AND source:yau-mco-flt-ue*",
           "timeField": "timestamp",
           "metrics": [
             {
@@ -946,7 +946,7 @@
     {
       "type": "table",
       "title": "Most unstable devices",
-      "description": "Link / neighbour change counts per device and event. Click a device to open it in Graylog.",
+      "description": "Link / neighbour change counts per device and event, TAG headends left out. Click a device to open it in Graylog.",
       "datasource": {
         "type": "grafana-opensearch-datasource",
         "uid": "graylog-os"
@@ -960,7 +960,7 @@
           },
           "queryType": "lucene",
           "luceneQueryType": "Metric",
-          "query": "cisco_event:(\"LINEPROTO-5-UPDOWN\" OR \"LINK-5-UPDOWN\" OR \"LINK-5-CHANGED\" OR \"BGP-5-ADJCHANGE\" OR \"BGP_SESSION-5-ADJCHANGE\" OR \"PIM-5-NBRCHG\" OR \"PIM-5-DRCHG\" OR \"DUAL-5-NBRCHANGE\")",
+          "query": "(cisco_event:(\"LINEPROTO-5-UPDOWN\" OR \"LINK-5-UPDOWN\" OR \"LINK-5-CHANGED\" OR \"BGP-5-ADJCHANGE\" OR \"BGP_SESSION-5-ADJCHANGE\" OR \"PIM-5-NBRCHG\" OR \"PIM-5-DRCHG\" OR \"DUAL-5-NBRCHANGE\")) AND NOT source:yau-mco-*-tag*",
           "timeField": "timestamp",
           "metrics": [
             {
@@ -1025,6 +1025,13 @@
               }
             ]
           }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^([A-Z0-9_]+)-\\d-([A-Z0-9_]+)$",
+            "renamePattern": "$1 $2"
+          }
         }
       ],
       "fieldConfig": {
@@ -1086,7 +1093,7 @@
                   {
                     "title": "Open in Graylog",
                     "targetBlank": true,
-                    "url": "https://10.231.137.100:9443/search?q=source%3A${__value.raw}%20AND%20cisco_event%3A%28%22LINEPROTO-5-UPDOWN%22%20OR%20%22LINK-5-UPDOWN%22%20OR%20%22LINK-5-CHANGED%22%20OR%20%22BGP-5-ADJCHANGE%22%20OR%20%22BGP_SESSION-5-ADJCHANGE%22%20OR%20%22PIM-5-NBRCHG%22%20OR%20%22PIM-5-DRCHG%22%20OR%20%22DUAL-5-NBRCHANGE%22%29&rangetype=absolute&from=${__from:date:iso}&to=${__to:date:iso}"
+                    "url": "https://10.231.137.100:9443/search?q=source%3A${__value.raw}%20AND%20%28cisco_event%3A%28%22LINEPROTO-5-UPDOWN%22%20OR%20%22LINK-5-UPDOWN%22%20OR%20%22LINK-5-CHANGED%22%20OR%20%22BGP-5-ADJCHANGE%22%20OR%20%22BGP_SESSION-5-ADJCHANGE%22%20OR%20%22PIM-5-NBRCHG%22%20OR%20%22PIM-5-DRCHG%22%20OR%20%22DUAL-5-NBRCHANGE%22%29%29%20AND%20NOT%20source%3Ayau-mco-%2A-tag%2A&rangetype=absolute&from=${__from:date:iso}&to=${__to:date:iso}"
                   }
                 ]
               },
@@ -1992,6 +1999,13 @@
               }
             ]
           }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^([A-Z0-9_]+)-\\d-([A-Z0-9_]+)$",
+            "renamePattern": "$1 $2"
+          }
         }
       ],
       "fieldConfig": {
@@ -2478,6 +2492,13 @@
                 "desc": true
               }
             ]
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^([A-Z0-9_]+)-\\d-([A-Z0-9_]+)$",
+            "renamePattern": "$1 $2"
           }
         }
       ],

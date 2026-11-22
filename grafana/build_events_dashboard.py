@@ -36,6 +36,9 @@ THEMES = {
 }
 # Session chatter from automation (Catalyst Center, PRTG, scripts): hidden by default.
 NOISE = ["SSH-5-SSH_CLOSE", "SSH-5-SSH2_SESSION", "SSH-5-SSH2_CLOSE", "SSH-5-SSH2_USERAUTH", "SYS-6-LOGOUT"]
+# Devices left out of a theme. The TAGs see every UE's tunnel, BGP and PIM session go down and
+# come back as machines park and leave coverage: normal churn, not instability.
+THEME_EXCLUDE = {"Stability": "source:yau-mco-*-tag*"}
 THEME_COLOURS = {"Stability": "orange", "Machine power": "red", "Changes and access": "blue",
                  "Hardware": "purple", "Hygiene": "green", "Other": "text"}
 
@@ -96,6 +99,9 @@ def device_matrix(title, query, column_field, desc, link_query, name_col="Device
                 {"id": "calculateField", "options": {"mode": "reduceRow", "reduce": {"reducer": "sum"},
                                                      "alias": "Total", "replaceFields": False}},
                 {"id": "sortBy", "options": {"sort": [{"field": "Total", "desc": True}]}},
+                # LINEPROTO-5-UPDOWN -> LINEPROTO UPDOWN (column headers)
+                {"id": "renameByRegex", "options": {"regex": "^([A-Z0-9_]+)-\\d-([A-Z0-9_]+)$",
+                                                    "renamePattern": "$1 $2"}},
             ],
             "fieldConfig": {"defaults": {
                 "mappings": [UE_MAPPING, {"type": "value", "options": {"0": {"text": "·"}}}],
@@ -162,10 +168,13 @@ GROUP BY source"""
 
 # ------------------------------------------------------------------ overview
 heading("Overview")
-theme_q = {name: events(*codes) for name, codes in THEMES.items()}
+theme_codes = {name: events(*codes) for name, codes in THEMES.items()}   # the event codes only
+theme_q = {name: f"({q}) AND NOT {THEME_EXCLUDE[name]}" if name in THEME_EXCLUDE else q
+           for name, q in theme_codes.items()}                            # codes minus excluded devices
 row_of([
     (stat("Link / routing changes", os_target(f"{LOW} AND {theme_q['Stability']}", COUNT, [HIST]), "sum",
-          "Interface up/down, BGP / PIM / EIGRP neighbour changes.",
+          "Interface up/down, BGP / PIM / EIGRP neighbour changes (TAG headends left out: UE tunnels "
+          "coming and going there is normal).",
           steps(("green", None), ("yellow", 1), ("orange", 1000)), sparkline=True), 5),
     (stat("UEs with under-voltage", os_target(f"{theme_q['Machine power']} AND {UES}", COUNT, [terms("source")]),
           "count", "UEs reporting ignition / supply under-voltage (machine battery, wiring, cranking).",
@@ -179,7 +188,8 @@ row_of([
           "Devices logging hygiene events (native VLAN mismatch, leftover Plug-and-Play, ...).",
           steps(("green", None), ("yellow", 1))), 4),
 ], 5)
-other = f"{LOW} AND NOT ({' OR '.join(theme_q.values())}) AND NOT cisco_event:${{noise}}"
+# 'Other' = codes in no theme (TAG stability churn is dropped, not moved to Other).
+other = f"{LOW} AND NOT ({' OR '.join(theme_codes.values())}) AND NOT cisco_event:${{noise}}"
 row_of([(bars("Lower-severity events by theme",
               [counted(name, f"{LOW} AND {q}", chr(65 + i)) for i, (name, q) in enumerate(theme_q.items())]
               + [counted("Other", other, "F")],
@@ -197,7 +207,8 @@ row_of([
                  "A vertical band = many UEs at once (shared cause); a streak = one unstable UE.",
                  steps(("transparent", None), ("yellow", 1), ("orange", 5), ("red", 20))), 14),
     (device_matrix("Most unstable devices", theme_q["Stability"], "cisco_event",
-                   "Link / neighbour change counts per device and event. Click a device to open it in Graylog.",
+                   "Link / neighbour change counts per device and event, TAG headends left out. "
+                   "Click a device to open it in Graylog.",
                    theme_q["Stability"]), 10),
 ], 14)
 
