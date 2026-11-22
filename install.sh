@@ -162,7 +162,9 @@ if [[ ! -s $DEST/grafana-admin-password.txt ]]; then
   python3 -c 'import secrets,string;a=string.ascii_letters+string.digits;print("".join(secrets.choice(a) for _ in range(24)))' > $DEST/grafana-admin-password.txt
   echo "generated Grafana admin password -> $DEST/grafana-admin-password.txt"
 fi
-chown $OWNER:472 $DEST/grafana-admin-password.txt; chmod 640 $DEST/grafana-admin-password.txt   # 472 = grafana image user
+# The grafana image runs as uid 472, gid 0 (root group): group-readable by root, owned by $OWNER for break-glass.
+# Grafana only applies it when its database is first created; to change it later use the Grafana UI/API.
+chown $OWNER:root $DEST/grafana-admin-password.txt; chmod 640 $DEST/grafana-admin-password.txt
 for s in "${ADMIN_SOURCES[@]}"; do ufw allow from "$s" to any port 9445 proto tcp comment 'akvorado grafana'; done
 
 step "8. Start Akvorado"
