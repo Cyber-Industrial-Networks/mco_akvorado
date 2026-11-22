@@ -2,7 +2,9 @@
 """test_dashboards.py - run every panel query of the deployed dashboards through Grafana.
 
 Run on fleet-mon after deploying (needs the break-glass admin password file):
-    python3 -I ~/akvorado/grafana/test_dashboards.py [uid ...]   # default: fleet-traffic fleet-syslog
+    python3 -I ~/akvorado/grafana/test_dashboards.py [uid | file.json ...]   # default: fleet-traffic fleet-syslog
+
+A .json argument tests that dashboard file (e.g. a newly generated one) before it is deployed.
 
 Template variables are replaced by their default (the dashboard's "current" value, or the
 All value). Only the queries are tested: panel transformations run in the browser.
@@ -30,7 +32,7 @@ def main(uids):
 
     failures = 0
     for uid in uids:
-        dash = call(f"/api/dashboards/uid/{uid}")["dashboard"]
+        dash = json.load(open(uid)) if uid.endswith(".json") else call(f"/api/dashboards/uid/{uid}")["dashboard"]
         print(f"== {dash['title']} ({uid}, version {dash.get('version')})")
         subs = {"$__interval_s": "60"}
         for v in dash.get("templating", {}).get("list", []):

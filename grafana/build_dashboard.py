@@ -51,8 +51,22 @@ def ip(col):
 NO_NAME = "('', 'ue-lan', 'ue-loopback', 'ue-cellular')"
 
 
+def UE_FROM_ADDR(side):
+    """UE name worked out from a fleet address (fixed numbering plan, see fleet-monitor ues_logic):
+    cellular 10.231.64.0+n and loopback 10.231.68.0+n are UE n; LAN = n-th /28 of 10.231.0.0.
+    Anything else: the address itself."""
+    a = ip(side + "Addr")
+    num = f"IPv4StringToNumOrDefault({a})"
+    pad = lambda n: f"concat('UE', leftPad(toString({n}), 3, '0'))"
+    return (f"multiIf(isIPAddressInRange({a}, '10.231.64.0/22'), {pad(num + ' - 182927360')}, "   # 10.231.64.0
+            f"isIPAddressInRange({a}, '10.231.68.0/23'), {pad(num + ' - 182928384')}, "               # 10.231.68.0
+            f"isIPAddressInRange({a}, '10.231.0.0/18'), {pad('intDiv(' + num + ' - 182910976, 16)')}, "  # 10.231.0.0
+            f"{a})")
+
+
 def NAME_OR_IP(side):
-    return f"if({side}NetName NOT IN {NO_NAME}, {side}NetName, {ip(side + 'Addr')})"
+    """UE name from the register feed; if missing (old flows, UE not in the register), from the address."""
+    return f"if({side}NetName NOT IN {NO_NAME}, {side}NetName, {UE_FROM_ADDR(side)})"
 
 
 UE = UE.format(src=NAME_OR_IP("Src"), dst=NAME_OR_IP("Dst"))
@@ -110,9 +124,10 @@ def stat(title, sql, unit, desc=""):
                         "colorMode": "value", "graphMode": "none", "textMode": "value"}}
 
 
-def table(title, sql, units=None, desc="", sort=None, answered=None):
+def table(title, sql, units=None, desc="", sort=None, answered=None, extra=None):
     overrides = [{"matcher": {"id": "byName", "options": name},
                   "properties": [{"id": "unit", "value": unit}]} for name, unit in (units or {}).items()]
+    overrides += extra or []
     if answered:  # Yes = green, No = red text
         overrides.append({"matcher": {"id": "byName", "options": answered}, "properties": [
             {"id": "mappings", "value": [{"type": "value", "options": {
@@ -180,7 +195,7 @@ WHERE {WHERE} AND {DECRYPTED} AND ExporterSite = 'oc3' AND {MACHINE_VAR}""", "no
 # --- Top UEs / machines
 row("Top UEs and machines")
 add(table("Top UEs", f"""
-SELECT {UE} AS UE, any({MACHINE}) AS Machine,
+SELECT {UE} AS UE, anyIf({MACHINE}, {MACHINE} != '') AS Machine,
        sumIf(Bytes, FlowDirection = 'egress') AS `From UE`,
        sumIf(Bytes, FlowDirection = 'ingress') AS `To UE`,
        sum(Bytes) AS Total, count() AS Flows,
@@ -236,7 +251,7 @@ SELECT o.UE AS UE, o.Machine AS Machine, o.Destination AS Destination, o.Protoco
        if(r.pkts > 0, 'Yes', 'No') AS Answered,
        o.bytes AS `Bytes out`, r.bytes AS `Bytes back`, o.last AS `Last sent`
 FROM (
-  SELECT {NAME_OR_IP('Src')} AS UE, any(SrcNetTenant) AS Machine, {ip('DstAddr')} AS Destination,
+  SELECT {NAME_OR_IP('Src')} AS UE, anyIf(SrcNetTenant, SrcNetTenant != '') AS Machine, {ip('DstAddr')} AS Destination,
          {PROTO} AS Protocol, DstPort AS Port, sum(Packets) AS pkts, sum(Bytes) AS bytes,
          max(TimeReceived) AS last
   FROM flows WHERE {WHERE} AND {UE_OUT} AND {PUBLIC_DST} AND {MACHINE_VAR}
@@ -271,20 +286,29 @@ for site in ("oc4", "oc3"):
                  f"sumIf(Bytes, {DECRYPTED} AND ExporterSite = '{site}') AS `Data {site.upper()}`"]
 add(table("Tunnels per UE", f"""
 SELECT if({ESP_IN} OR FlowDirection = 'egress', {NAME_OR_IP('Src')}, {NAME_OR_IP('Dst')}) AS UE,
-       any(if({ESP_IN} OR FlowDirection = 'egress', SrcNetTenant, DstNetTenant)) AS Machine,
+       anyIf(if({ESP_IN} OR FlowDirection = 'egress', SrcNetTenant, DstNetTenant),
+             if({ESP_IN} OR FlowDirection = 'egress', SrcNetTenant, DstNetTenant) != '') AS Machine,
        {', '.join(tag_cols)},
        multiIf(`Data OC3` > `Data OC4`, 'OC3 (standby)', `Data OC4` > 0, 'OC4',
                `Tunnel OC4` > `Tunnel OC3`, 'OC4 (no data)', 'OC3 (no data)') AS `Carried by`,
-       maxIf(TimeReceived, {ESP_IN}) AS `Last tunnel packet`
+       maxIf(TimeReceived, {ESP_IN}) AS `Last tunnel packet`,
+       dateDiff('minute', `Last tunnel packet`, now()) AS `Minutes since`
 FROM flows
 WHERE {WHERE} AND ({ESP_IN} OR {DECRYPTED}) AND {MACHINE_VAR}
 GROUP BY UE HAVING UE != ''
-ORDER BY (`Carried by` != 'OC4') DESC, `Data OC4` + `Data OC3` ASC LIMIT 200""",
+ORDER BY (`Carried by` != 'OC4') DESC, `Minutes since` DESC, `Data OC4` + `Data OC3` ASC LIMIT 200""",
           {"Tunnel OC4": "decbytes", "Data OC4": "decbytes", "Tunnel OC3": "decbytes",
            "Data OC3": "decbytes", "Last tunnel packet": "dateTimeAsLocal"},
           "Tunnel = encrypted ESP/IKE from the UE's cellular address to each TAG (standby still sees "
           "keepalives). Data = decrypted traffic through that TAG. UEs not on OC4, or with no data, "
-          "are listed first."), 14, 12)
+          "are listed first. Minutes since = since the last tunnel packet: amber > 5, red > 30 "
+          "(the UE has likely dropped off the network).",
+          extra=[{"matcher": {"id": "byName", "options": "Minutes since"}, "properties": [
+              {"id": "color", "value": {"mode": "thresholds"}},
+              {"id": "thresholds", "value": {"mode": "absolute", "steps": [
+                  {"color": "green", "value": None}, {"color": "orange", "value": 5}, {"color": "red", "value": 30}]}},
+              {"id": "custom.cellOptions", "value": {"type": "color-background", "mode": "basic"}},
+              {"id": "custom.align", "value": "center"}]}]), 14, 12)
 add(series("Encrypted tunnel traffic by TAG", f"""
 SELECT $__timeInterval(TimeReceived) AS time, upper(ExporterSite) AS tag, {BPS} AS bps
 FROM flows
@@ -299,6 +323,7 @@ dashboard = {
     "tags": ["akvorado", "fleet"],
     "timezone": "browser",
     "editable": True,
+    "graphTooltip": 1,  # shared crosshair across the time panels
     "refresh": "1m",
     "time": {"from": "now-6h", "to": "now"},
     "schemaVersion": 39,

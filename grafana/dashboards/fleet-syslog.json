@@ -7,6 +7,7 @@
   ],
   "timezone": "browser",
   "editable": true,
+  "graphTooltip": 1,
   "refresh": "1m",
   "time": {
     "from": "now-24h",
@@ -65,7 +66,7 @@
     {
       "type": "stat",
       "title": "Critical or worse",
-      "description": "Messages at severity 0-2 (emergency, alert, critical) from any device.",
+      "description": "Messages at severity 0-2 (emergency, alert, critical) from any device, with the trend.",
       "datasource": {
         "type": "grafana-opensearch-datasource",
         "uid": "graylog-os"
@@ -103,10 +104,27 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "none",
+          "unit": "short",
+          "decimals": 0,
           "color": {
-            "mode": "fixed",
-            "fixedColor": "red"
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
           }
         },
         "overrides": []
@@ -119,22 +137,24 @@
           "fields": "",
           "values": false
         },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "value"
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value",
+        "justifyMode": "center",
+        "wideLayout": true
       },
       "gridPos": {
         "x": 0,
         "y": 1,
-        "w": 6,
-        "h": 4
+        "w": 5,
+        "h": 5
       },
       "id": 2
     },
     {
       "type": "stat",
-      "title": "Errors (severity 3)",
-      "description": "Messages at severity 3 (error) from any device.",
+      "title": "Errors",
+      "description": "Messages at severity 3 (error) from any device, with the trend.",
       "datasource": {
         "type": "grafana-opensearch-datasource",
         "uid": "graylog-os"
@@ -172,10 +192,27 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "none",
+          "unit": "short",
+          "decimals": 0,
           "color": {
-            "mode": "fixed",
-            "fixedColor": "yellow"
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 1000
+              }
+            ]
           }
         },
         "overrides": []
@@ -188,15 +225,17 @@
           "fields": "",
           "values": false
         },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "value"
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value",
+        "justifyMode": "center",
+        "wideLayout": true
       },
       "gridPos": {
-        "x": 6,
+        "x": 5,
         "y": 1,
-        "w": 6,
-        "h": 4
+        "w": 5,
+        "h": 5
       },
       "id": 3
     },
@@ -242,10 +281,27 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "none",
+          "unit": "short",
+          "decimals": 0,
           "color": {
-            "mode": "fixed",
-            "fixedColor": "red"
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 10
+              }
+            ]
           }
         },
         "overrides": []
@@ -258,15 +314,17 @@
           "fields": "",
           "values": false
         },
-        "colorMode": "value",
+        "colorMode": "background",
         "graphMode": "none",
-        "textMode": "value"
+        "textMode": "value",
+        "justifyMode": "center",
+        "wideLayout": true
       },
       "gridPos": {
-        "x": 12,
+        "x": 10,
         "y": 1,
-        "w": 6,
-        "h": 4
+        "w": 5,
+        "h": 5
       },
       "id": 4
     },
@@ -312,10 +370,31 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "none",
+          "unit": "short",
+          "decimals": 0,
           "color": {
-            "mode": "fixed",
-            "fixedColor": "orange"
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 25
+              },
+              {
+                "color": "red",
+                "value": 50
+              }
+            ]
           }
         },
         "overrides": []
@@ -328,39 +407,28 @@
           "fields": "",
           "values": false
         },
-        "colorMode": "value",
+        "colorMode": "background",
         "graphMode": "none",
-        "textMode": "value"
+        "textMode": "value",
+        "justifyMode": "center",
+        "wideLayout": true
       },
       "gridPos": {
-        "x": 18,
+        "x": 15,
         "y": 1,
-        "w": 6,
-        "h": 4
+        "w": 5,
+        "h": 5
       },
       "id": 5
     },
     {
-      "type": "row",
-      "title": "Timeline",
-      "collapsed": false,
-      "panels": [],
-      "gridPos": {
-        "x": 0,
-        "y": 5,
-        "w": 24,
-        "h": 1
-      },
-      "id": 6
-    },
-    {
-      "type": "timeseries",
-      "title": "Messages by severity",
+      "type": "piechart",
+      "title": "Severity mix",
       "datasource": {
         "type": "grafana-opensearch-datasource",
         "uid": "graylog-os"
       },
-      "description": "Count per interval at the selected level, split by severity. A spike across many devices at once points at a network event rather than one faulty UE.",
+      "description": "Share of messages per severity at the selected level.",
       "targets": [
         {
           "refId": "A",
@@ -405,17 +473,7 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "none",
-          "custom": {
-            "drawStyle": "bars",
-            "fillOpacity": 80,
-            "stacking": {
-              "mode": "normal",
-              "group": "A"
-            },
-            "lineWidth": 1,
-            "showPoints": "never"
-          }
+          "unit": "short"
         },
         "overrides": [
           {
@@ -430,6 +488,10 @@
                   "mode": "fixed",
                   "fixedColor": "dark-red"
                 }
+              },
+              {
+                "id": "displayName",
+                "value": "Emergency"
               }
             ]
           },
@@ -445,6 +507,10 @@
                   "mode": "fixed",
                   "fixedColor": "red"
                 }
+              },
+              {
+                "id": "displayName",
+                "value": "Alert"
               }
             ]
           },
@@ -460,6 +526,10 @@
                   "mode": "fixed",
                   "fixedColor": "orange"
                 }
+              },
+              {
+                "id": "displayName",
+                "value": "Critical"
               }
             ]
           },
@@ -475,6 +545,202 @@
                   "mode": "fixed",
                   "fixedColor": "yellow"
                 }
+              },
+              {
+                "id": "displayName",
+                "value": "Error"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "pieType": "donut",
+        "displayLabels": [
+          "percent"
+        ],
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value"
+          ]
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 1,
+        "w": 4,
+        "h": 5
+      },
+      "id": 6
+    },
+    {
+      "type": "row",
+      "title": "Timeline",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 1
+      },
+      "id": 7
+    },
+    {
+      "type": "timeseries",
+      "title": "Messages by severity",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-os"
+      },
+      "interval": "5m",
+      "description": "Count per 5-minute (or wider) interval at the selected level, stacked by severity.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "severity:<=$level",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "count"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "3",
+              "type": "terms",
+              "field": "severity_name",
+              "settings": {
+                "size": "10",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "id": "9",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 85,
+            "gradientMode": "hue",
+            "lineWidth": 0,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "showPoints": "never",
+            "axisSoftMin": 0,
+            "axisLabel": "messages"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "0-emergency"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "dark-red"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "Emergency"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "1-alert"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "Alert"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "2-critical"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "Critical"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "3-error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "Error"
               }
             ]
           }
@@ -483,7 +749,10 @@
       "options": {
         "legend": {
           "displayMode": "list",
-          "placement": "bottom"
+          "placement": "bottom",
+          "calcs": [
+            "sum"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -492,11 +761,11 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 6,
+        "y": 7,
         "w": 14,
         "h": 9
       },
-      "id": 7
+      "id": 8
     },
     {
       "type": "timeseries",
@@ -505,7 +774,8 @@
         "type": "grafana-opensearch-datasource",
         "uid": "graylog-os"
       },
-      "description": "Distinct UEs logging at the selected level per interval. Many UEs at the same time = likely outage (LTE core, TAG, core switch).",
+      "interval": "5m",
+      "description": "Distinct UEs logging at the selected level per interval. Amber above 10, red above 25: many UEs at once points at a shared cause (LTE core, TAG, core switch), not one UE.",
       "targets": [
         {
           "refId": "A",
@@ -540,23 +810,182 @@
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "none",
-          "displayName": "UEs",
+          "unit": "short",
+          "decimals": 0,
+          "displayName": "UEs reporting",
+          "min": 0,
           "color": {
-            "mode": "fixed",
-            "fixedColor": "red"
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 25
+              }
+            ]
           },
           "custom": {
             "drawStyle": "line",
-            "fillOpacity": 20,
+            "lineInterpolation": "smooth",
             "lineWidth": 2,
-            "showPoints": "never"
+            "fillOpacity": 25,
+            "gradientMode": "scheme",
+            "showPoints": "never",
+            "thresholdsStyle": {
+              "mode": "dashed"
+            },
+            "axisLabel": "UEs"
           }
         },
         "overrides": []
       },
       "options": {
         "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "max",
+            "mean"
+          ]
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 7,
+        "w": 10,
+        "h": 9
+      },
+      "id": 9
+    },
+    {
+      "type": "status-history",
+      "title": "Status by UE (worst severity per interval)",
+      "datasource": {
+        "type": "grafana-opensearch-datasource",
+        "uid": "graylog-os"
+      },
+      "interval": "15m",
+      "maxDataPoints": 200,
+      "description": "The 30 UEs with the most messages at the selected level; each cell is the worst severity logged in that interval. A vertical band across many UEs = shared event (outage); a horizontal streak = one UE with an ongoing problem.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-opensearch-datasource",
+            "uid": "graylog-os"
+          },
+          "queryType": "lucene",
+          "luceneQueryType": "Metric",
+          "query": "severity:<=$level AND source:yau-mco-flt-ue*",
+          "timeField": "timestamp",
+          "metrics": [
+            {
+              "id": "1",
+              "type": "min",
+              "field": "severity"
+            }
+          ],
+          "bucketAggs": [
+            {
+              "id": "2",
+              "type": "terms",
+              "field": "source",
+              "settings": {
+                "size": "30",
+                "order": "desc",
+                "orderBy": "_count",
+                "min_doc_count": "1"
+              }
+            },
+            {
+              "id": "9",
+              "type": "date_histogram",
+              "field": "timestamp",
+              "settings": {
+                "interval": "auto",
+                "min_doc_count": "0",
+                "trimEdges": "0"
+              }
+            }
+          ]
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^yau-mco-flt-ue(\\d+)$",
+            "renamePattern": "UE$1"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Emergency",
+                  "color": "dark-red",
+                  "index": 0
+                },
+                "1": {
+                  "text": "Alert",
+                  "color": "red",
+                  "index": 1
+                },
+                "2": {
+                  "text": "Critical",
+                  "color": "orange",
+                  "index": 2
+                },
+                "3": {
+                  "text": "Error",
+                  "color": "yellow",
+                  "index": 3
+                }
+              }
+            }
+          ],
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showValue": "never",
+        "rowHeight": 0.85,
+        "colWidth": 0.95,
+        "legend": {
+          "showLegend": true,
           "displayMode": "list",
           "placement": "bottom"
         },
@@ -565,12 +994,12 @@
         }
       },
       "gridPos": {
-        "x": 14,
-        "y": 6,
-        "w": 10,
-        "h": 9
+        "x": 0,
+        "y": 16,
+        "w": 24,
+        "h": 14
       },
-      "id": 8
+      "id": 10
     },
     {
       "type": "row",
@@ -579,11 +1008,11 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 15,
+        "y": 30,
         "w": 24,
         "h": 1
       },
-      "id": 9
+      "id": 11
     },
     {
       "type": "table",
@@ -706,6 +1135,10 @@
                     "url": "https://10.231.137.100:9443/search?q=source%3A${__value.raw}%20AND%20severity%3A%3C%3D${level}&rangetype=absolute&from=${__from:date:iso}&to=${__to:date:iso}"
                   }
                 ]
+              },
+              {
+                "id": "custom.width",
+                "value": 150
               }
             ]
           },
@@ -716,17 +1149,58 @@
             },
             "properties": [
               {
+                "id": "displayName",
+                "value": "Emergency"
+              },
+              {
                 "id": "color",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "dark-red"
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "dark-red",
+                      "value": 1
+                    }
+                  ]
                 }
               },
               {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "color-text"
+                  "type": "color-background",
+                  "mode": "basic"
                 }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "\u00b7"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 95
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
               }
             ]
           },
@@ -737,17 +1211,58 @@
             },
             "properties": [
               {
+                "id": "displayName",
+                "value": "Alert"
+              },
+              {
                 "id": "color",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "red"
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
                 }
               },
               {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "color-text"
+                  "type": "color-background",
+                  "mode": "basic"
                 }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "\u00b7"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 95
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
               }
             ]
           },
@@ -758,17 +1273,58 @@
             },
             "properties": [
               {
+                "id": "displayName",
+                "value": "Critical"
+              },
+              {
                 "id": "color",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "orange"
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
                 }
               },
               {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "color-text"
+                  "type": "color-background",
+                  "mode": "basic"
                 }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "\u00b7"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 95
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
               }
             ]
           },
@@ -779,17 +1335,84 @@
             },
             "properties": [
               {
+                "id": "displayName",
+                "value": "Error"
+              },
+              {
                 "id": "color",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "yellow"
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 1
+                    }
+                  ]
                 }
               },
               {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "color-text"
+                  "type": "color-background",
+                  "mode": "basic"
                 }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "\u00b7"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 95
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-YlRd"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
               }
             ]
           }
@@ -797,15 +1420,18 @@
       },
       "options": {
         "showHeader": true,
-        "cellHeight": "sm"
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
       },
       "gridPos": {
         "x": 0,
-        "y": 16,
+        "y": 31,
         "w": 12,
         "h": 12
       },
-      "id": 10
+      "id": 12
     },
     {
       "type": "table",
@@ -928,6 +1554,10 @@
                     "url": "https://10.231.137.100:9443/search?q=source%3A${__value.raw}%20AND%20severity%3A%3C%3D${level}&rangetype=absolute&from=${__from:date:iso}&to=${__to:date:iso}"
                   }
                 ]
+              },
+              {
+                "id": "custom.width",
+                "value": 150
               }
             ]
           },
@@ -938,17 +1568,58 @@
             },
             "properties": [
               {
+                "id": "displayName",
+                "value": "Emergency"
+              },
+              {
                 "id": "color",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "dark-red"
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "dark-red",
+                      "value": 1
+                    }
+                  ]
                 }
               },
               {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "color-text"
+                  "type": "color-background",
+                  "mode": "basic"
                 }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "\u00b7"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 95
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
               }
             ]
           },
@@ -959,17 +1630,58 @@
             },
             "properties": [
               {
+                "id": "displayName",
+                "value": "Alert"
+              },
+              {
                 "id": "color",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "red"
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
                 }
               },
               {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "color-text"
+                  "type": "color-background",
+                  "mode": "basic"
                 }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "\u00b7"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 95
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
               }
             ]
           },
@@ -980,17 +1692,58 @@
             },
             "properties": [
               {
+                "id": "displayName",
+                "value": "Critical"
+              },
+              {
                 "id": "color",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "orange"
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    }
+                  ]
                 }
               },
               {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "color-text"
+                  "type": "color-background",
+                  "mode": "basic"
                 }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "\u00b7"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 95
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
               }
             ]
           },
@@ -1001,17 +1754,84 @@
             },
             "properties": [
               {
+                "id": "displayName",
+                "value": "Error"
+              },
+              {
                 "id": "color",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "yellow"
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 1
+                    }
+                  ]
                 }
               },
               {
                 "id": "custom.cellOptions",
                 "value": {
-                  "type": "color-text"
+                  "type": "color-background",
+                  "mode": "basic"
                 }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "\u00b7"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 95
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-YlRd"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
               }
             ]
           }
@@ -1019,15 +1839,18 @@
       },
       "options": {
         "showHeader": true,
-        "cellHeight": "sm"
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
       },
       "gridPos": {
         "x": 12,
-        "y": 16,
+        "y": 31,
         "w": 12,
         "h": 12
       },
-      "id": 11
+      "id": 13
     },
     {
       "type": "row",
@@ -1036,11 +1859,11 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 28,
+        "y": 43,
         "w": 24,
         "h": 1
       },
-      "id": 12
+      "id": 14
     },
     {
       "type": "table",
@@ -1105,7 +1928,50 @@
             "filterable": true
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Messages"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "continuous-YlRd"
+                }
+              },
+              {
+                "id": "min",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Devices"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 80
+              },
+              {
+                "id": "custom.align",
+                "value": "center"
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "showHeader": true,
@@ -1113,11 +1979,11 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 29,
+        "y": 44,
         "w": 8,
         "h": 13
       },
-      "id": 13
+      "id": 15
     },
     {
       "type": "table",
@@ -1217,12 +2083,85 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Message"
+              "options": "Time"
             },
             "properties": [
               {
                 "id": "custom.width",
-                "value": 900
+                "value": 170
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Device"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Event"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 260
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Severity"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 95
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0-emergency": {
+                        "text": "Emergency",
+                        "color": "dark-red",
+                        "index": 0
+                      },
+                      "1-alert": {
+                        "text": "Alert",
+                        "color": "red",
+                        "index": 1
+                      },
+                      "2-critical": {
+                        "text": "Critical",
+                        "color": "orange",
+                        "index": 2
+                      },
+                      "3-error": {
+                        "text": "Error",
+                        "color": "yellow",
+                        "index": 3
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "basic"
+                }
               }
             ]
           }
@@ -1234,11 +2173,11 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 29,
+        "y": 44,
         "w": 16,
         "h": 13
       },
-      "id": 14
+      "id": 16
     }
   ]
 }

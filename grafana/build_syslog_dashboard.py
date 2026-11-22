@@ -58,6 +58,8 @@ def os_target(query, metrics, buckets, kind="Metric", ref="A"):
 
 
 COUNT = [{"id": "1", "type": "count"}]
+SEV_NAMES = {"0-emergency": "Emergency", "1-alert": "Alert", "2-critical": "Critical", "3-error": "Error"}
+SEV_BY_NUM = {"0": ("Emergency", "dark-red"), "1": ("Alert", "red"), "2": ("Critical", "orange"), "3": ("Error", "yellow")}
 
 
 def terms(field, size=500, id_="2"):
@@ -69,16 +71,37 @@ HIST = {"id": "9", "type": "date_histogram", "field": "timestamp",
         "settings": {"interval": "auto", "min_doc_count": "0", "trimEdges": "0"}}
 
 
-def stat(title, target, calc, desc, colour="red"):
+def steps(*pairs):
+    """steps(("green", None), ("orange", 1), ("red", 10)) -> Grafana absolute thresholds."""
+    return {"mode": "absolute", "steps": [{"color": c, "value": v} for c, v in pairs]}
+
+
+def sev_series_overrides():
+    """Series named 1-alert etc.: severity colour and a friendly name."""
+    return [{"matcher": {"id": "byName", "options": n},
+             "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": SEV_COLOURS[n]}},
+                            {"id": "displayName", "value": SEV_NAMES[n]}]} for n in SEV_COLOURS]
+
+
+def stat(title, target, calc, desc, thresholds, sparkline=False):
     return {"type": "stat", "title": title, "description": desc, "datasource": DS, "targets": [target],
-            "fieldConfig": {"defaults": {"unit": "none", "color": {"mode": "fixed", "fixedColor": colour}},
-                            "overrides": []},
+            "fieldConfig": {"defaults": {"unit": "short", "decimals": 0, "color": {"mode": "thresholds"},
+                                         "thresholds": thresholds}, "overrides": []},
             "options": {"reduceOptions": {"calcs": [calc], "fields": "", "values": False},
-                        "colorMode": "value", "graphMode": "none", "textMode": "value"}}
+                        "colorMode": "background", "graphMode": "area" if sparkline else "none",
+                        "textMode": "value", "justifyMode": "center", "wideLayout": True}}
 
 
 def severity_matrix(title, query, desc, name_col):
     """Device x severity counts: terms(source) > terms(severity_name), pivoted with groupingToMatrix."""
+    sev_cols = [{"matcher": {"id": "byName", "options": n}, "properties": [
+        {"id": "displayName", "value": SEV_NAMES[n]},
+        {"id": "color", "value": {"mode": "thresholds"}},
+        {"id": "thresholds", "value": steps(("transparent", None), (c, 1))},
+        {"id": "custom.cellOptions", "value": {"type": "color-background", "mode": "basic"}},
+        {"id": "mappings", "value": [{"type": "value", "options": {"0": {"text": "·"}}}]},
+        {"id": "custom.width", "value": 95}, {"id": "custom.align", "value": "center"}]}
+        for n, c in SEV_COLOURS.items()]
     return {"type": "table", "title": title, "description": desc, "datasource": DS,
             "targets": [os_target(query, COUNT, [terms("source"), terms("severity_name", 10, "3")], "Metric")],
             "transformations": [
@@ -92,53 +115,88 @@ def severity_matrix(title, query, desc, name_col):
                 "defaults": {"mappings": [UE_MAPPING], "custom": {"filterable": True}},
                 "overrides": [
                     {"matcher": {"id": "byType", "options": "string"},
-                     "properties": [{"id": "displayName", "value": name_col}, {"id": "links", "value": [GRAYLOG_LINK]}]},
-                    *[{"matcher": {"id": "byName", "options": n},
-                       "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": c}},
-                                      {"id": "custom.cellOptions", "value": {"type": "color-text"}}]}
-                      for n, c in SEV_COLOURS.items()],
+                     "properties": [{"id": "displayName", "value": name_col}, {"id": "links", "value": [GRAYLOG_LINK]},
+                                    {"id": "custom.width", "value": 150}]},
+                    *sev_cols,
+                    {"matcher": {"id": "byName", "options": "Total"}, "properties": [
+                        {"id": "custom.cellOptions", "value": {"type": "gauge", "mode": "basic",
+                                                               "valueDisplayMode": "text"}},
+                        {"id": "color", "value": {"mode": "continuous-YlRd"}}, {"id": "min", "value": 0}]},
                 ]},
-            "options": {"showHeader": True, "cellHeight": "sm"}}
+            "options": {"showHeader": True, "cellHeight": "sm", "footer": {"show": False}}}
 
 
 # --- overview
 heading("Overview")
 row_of([
     (stat("Critical or worse", os_target("severity:<=2", COUNT, [HIST]), "sum",
-          "Messages at severity 0-2 (emergency, alert, critical) from any device."), 6),
-    (stat("Errors (severity 3)", os_target("severity:3", COUNT, [HIST]), "sum",
-          "Messages at severity 3 (error) from any device.", "yellow"), 6),
+          "Messages at severity 0-2 (emergency, alert, critical) from any device, with the trend.",
+          steps(("green", None), ("orange", 1), ("red", 100)), sparkline=True), 5),
+    (stat("Errors", os_target("severity:3", COUNT, [HIST]), "sum",
+          "Messages at severity 3 (error) from any device, with the trend.",
+          steps(("green", None), ("yellow", 1), ("orange", 1000)), sparkline=True), 5),
     (stat("UEs at critical or worse", os_target(f"severity:<=2 AND {UES}", COUNT, [terms("source")]), "count",
-          "Number of UEs that logged severity 0-2."), 6),
+          "Number of UEs that logged severity 0-2.",
+          steps(("green", None), ("orange", 1), ("red", 10))), 5),
     (stat("UEs at the selected level", os_target(f"{LEVEL} AND {UES}", COUNT, [terms("source")]), "count",
-          "Number of UEs that logged at the level chosen at the top (default: error or worse).", "orange"), 6),
-], 4)
+          "Number of UEs that logged at the level chosen at the top (default: error or worse).",
+          steps(("green", None), ("yellow", 1), ("orange", 25), ("red", 50))), 5),
+    ({"type": "piechart", "title": "Severity mix", "datasource": DS,
+      "description": "Share of messages per severity at the selected level.",
+      "targets": [os_target(LEVEL, COUNT, [terms("severity_name", 10, "3"), HIST])],
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": sev_series_overrides()},
+      "options": {"pieType": "donut", "displayLabels": ["percent"],
+                  "reduceOptions": {"calcs": ["sum"], "fields": "", "values": False},
+                  "legend": {"displayMode": "table", "placement": "right", "values": ["value"]},
+                  "tooltip": {"mode": "single"}}}, 4),
+], 5)
 
 # --- timeline
 heading("Timeline")
 timeline = {
-    "type": "timeseries", "title": "Messages by severity", "datasource": DS,
-    "description": "Count per interval at the selected level, split by severity. A spike across many "
-                   "devices at once points at a network event rather than one faulty UE.",
+    "type": "timeseries", "title": "Messages by severity", "datasource": DS, "interval": "5m",
+    "description": "Count per 5-minute (or wider) interval at the selected level, stacked by severity.",
     "targets": [os_target(LEVEL, COUNT, [terms("severity_name", 10, "3"), HIST])],
-    "fieldConfig": {"defaults": {"unit": "none", "custom": {"drawStyle": "bars", "fillOpacity": 80,
-                                                            "stacking": {"mode": "normal", "group": "A"},
-                                                            "lineWidth": 1, "showPoints": "never"}},
-                    "overrides": [{"matcher": {"id": "byName", "options": n},
-                                   "properties": [{"id": "color", "value": {"mode": "fixed", "fixedColor": c}}]}
-                                  for n, c in SEV_COLOURS.items()]},
-    "options": {"legend": {"displayMode": "list", "placement": "bottom"},
+    "fieldConfig": {"defaults": {"unit": "short", "custom": {
+        "drawStyle": "bars", "fillOpacity": 85, "gradientMode": "hue", "lineWidth": 0, "barAlignment": 0,
+        "stacking": {"mode": "normal", "group": "A"}, "showPoints": "never",
+        "axisSoftMin": 0, "axisLabel": "messages"}},
+        "overrides": sev_series_overrides()},
+    "options": {"legend": {"displayMode": "list", "placement": "bottom", "calcs": ["sum"]},
                 "tooltip": {"mode": "multi", "sort": "desc"}}}
 ues_reporting = {
-    "type": "timeseries", "title": "UEs reporting at the selected level", "datasource": DS,
-    "description": "Distinct UEs logging at the selected level per interval. Many UEs at the same "
-                   "time = likely outage (LTE core, TAG, core switch).",
+    "type": "timeseries", "title": "UEs reporting at the selected level", "datasource": DS, "interval": "5m",
+    "description": "Distinct UEs logging at the selected level per interval. Amber above 10, red above 25: "
+                   "many UEs at once points at a shared cause (LTE core, TAG, core switch), not one UE.",
     "targets": [os_target(f"{LEVEL} AND {UES}", [{"id": "1", "type": "cardinality", "field": "source"}], [HIST])],
-    "fieldConfig": {"defaults": {"unit": "none", "displayName": "UEs", "color": {"mode": "fixed", "fixedColor": "red"},
-                                 "custom": {"drawStyle": "line", "fillOpacity": 20, "lineWidth": 2,
-                                            "showPoints": "never"}}, "overrides": []},
-    "options": {"legend": {"displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}}}
+    "fieldConfig": {"defaults": {
+        "unit": "short", "decimals": 0, "displayName": "UEs reporting", "min": 0,
+        "color": {"mode": "thresholds"}, "thresholds": steps(("green", None), ("orange", 10), ("red", 25)),
+        "custom": {"drawStyle": "line", "lineInterpolation": "smooth", "lineWidth": 2, "fillOpacity": 25,
+                   "gradientMode": "scheme", "showPoints": "never", "thresholdsStyle": {"mode": "dashed"},
+                   "axisLabel": "UEs"}}, "overrides": []},
+    "options": {"legend": {"displayMode": "list", "placement": "bottom", "calcs": ["max", "mean"]},
+                "tooltip": {"mode": "single"}}}
 row_of([(timeline, 14), (ues_reporting, 10)], 9)
+
+status = {
+    "type": "status-history", "title": "Status by UE (worst severity per interval)", "datasource": DS,
+    "interval": "15m", "maxDataPoints": 200,
+    "description": "The 30 UEs with the most messages at the selected level; each cell is the worst severity "
+                   "logged in that interval. A vertical band across many UEs = shared event (outage); "
+                   "a horizontal streak = one UE with an ongoing problem.",
+    "targets": [os_target(f"{LEVEL} AND {UES}", [{"id": "1", "type": "min", "field": "severity"}],
+                          [terms("source", 30), HIST])],
+    "transformations": [{"id": "renameByRegex", "options": {"regex": "^yau-mco-flt-ue(\\d+)$", "renamePattern": "UE$1"}}],
+    "fieldConfig": {"defaults": {
+        "color": {"mode": "thresholds"}, "thresholds": steps(("transparent", None)),
+        "mappings": [{"type": "value", "options": {
+            k: {"text": t, "color": c, "index": i} for i, (k, (t, c)) in enumerate(SEV_BY_NUM.items())}}],
+        "custom": {"fillOpacity": 85, "lineWidth": 0}}, "overrides": []},
+    "options": {"showValue": "never", "rowHeight": 0.85, "colWidth": 0.95,
+                "legend": {"showLegend": True, "displayMode": "list", "placement": "bottom"},
+                "tooltip": {"mode": "single"}}}
+row_of([(status, 24)], 14)
 
 # --- per device
 heading("By device")
@@ -161,7 +219,12 @@ events = {
                           [terms("cisco_event", 50)])],
     "transformations": [{"id": "organize", "options": {"renameByName": {
         "cisco_event": "Event", "Count": "Messages", "Unique Count": "Devices"}}}],
-    "fieldConfig": {"defaults": {"custom": {"filterable": True}}, "overrides": []},
+    "fieldConfig": {"defaults": {"custom": {"filterable": True}}, "overrides": [
+        {"matcher": {"id": "byName", "options": "Messages"}, "properties": [
+            {"id": "custom.cellOptions", "value": {"type": "gauge", "mode": "basic", "valueDisplayMode": "text"}},
+            {"id": "color", "value": {"mode": "continuous-YlRd"}}, {"id": "min", "value": 0}]},
+        {"matcher": {"id": "byName", "options": "Devices"}, "properties": [
+            {"id": "custom.width", "value": 80}, {"id": "custom.align", "value": "center"}]}]},
     "options": {"showHeader": True, "cellHeight": "sm"}}
 latest = {
     "type": "table", "title": "Latest critical-or-worse messages", "datasource": DS,
@@ -177,9 +240,15 @@ latest = {
                              "cisco_event": "Event", "message": "Message"}}},
         {"id": "sortBy", "options": {"sort": [{"field": "Time", "desc": True}]}},
     ],
-    "fieldConfig": {"defaults": {"mappings": [UE_MAPPING], "custom": {"filterable": True}},
-                    "overrides": [{"matcher": {"id": "byName", "options": "Message"},
-                                   "properties": [{"id": "custom.width", "value": 900}]}]},
+    "fieldConfig": {"defaults": {"mappings": [UE_MAPPING], "custom": {"filterable": True}}, "overrides": [
+        {"matcher": {"id": "byName", "options": "Time"}, "properties": [{"id": "custom.width", "value": 170}]},
+        {"matcher": {"id": "byName", "options": "Device"}, "properties": [{"id": "custom.width", "value": 150}]},
+        {"matcher": {"id": "byName", "options": "Event"}, "properties": [{"id": "custom.width", "value": 260}]},
+        {"matcher": {"id": "byName", "options": "Severity"}, "properties": [
+            {"id": "custom.width", "value": 95},
+            {"id": "mappings", "value": [{"type": "value", "options": {
+                n: {"text": SEV_NAMES[n], "color": c, "index": i} for i, (n, c) in enumerate(SEV_COLOURS.items())}}]},
+            {"id": "custom.cellOptions", "value": {"type": "color-background", "mode": "basic"}}]}]},
     "options": {"showHeader": True, "cellHeight": "sm"}}
 row_of([(events, 8), (latest, 16)], 13)
 
@@ -189,6 +258,7 @@ dashboard = {
     "tags": ["graylog", "fleet"],
     "timezone": "browser",
     "editable": True,
+    "graphTooltip": 1,  # shared crosshair across the time panels
     "refresh": "1m",
     "time": {"from": "now-24h", "to": "now"},
     "schemaVersion": 39,
